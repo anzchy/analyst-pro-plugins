@@ -1,0 +1,22 @@
+{
+  "name": "spike-form-c",
+  "owner": { "name": "anzchy" },
+  "plugins": [
+    {
+      "name": "hello-c1",
+      "version": "0.0.1",
+      "description": "Phase 0 spike form C: first plugin declaring playwright MCP",
+      "source": "./hello-c1",
+      "category": "spike",
+      "keywords": ["spike", "phase0", "mcp-dedup"]
+    },
+    {
+      "name": "hello-c2",
+      "version": "0.0.1",
+      "description": "Phase 0 spike form C: second plugin ALSO declaring playwright MCP — tests dedup",
+      "source": "./hello-c2",
+      "category": "spike",
+      "keywords": ["spike", "phase0", "mcp-dedup"]
+    }
+  ]
+}

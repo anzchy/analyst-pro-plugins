@@ -1,0 +1,6 @@
+# Phase 0 spike — local artifacts that should not be committed
+.probe-tmp/
+node_modules/
+.DS_Store
+package-lock.json
+package.json

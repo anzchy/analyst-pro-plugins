@@ -1,0 +1,117 @@
+[
+  {
+    "name": "browser_close",
+    "mcpName": "mcp__playwright__browser_close",
+    "description": "Close the page"
+  },
+  {
+    "name": "browser_resize",
+    "mcpName": "mcp__playwright__browser_resize",
+    "description": "Resize the browser window"
+  },
+  {
+    "name": "browser_console_messages",
+    "mcpName": "mcp__playwright__browser_console_messages",
+    "description": "Returns all console messages"
+  },
+  {
+    "name": "browser_handle_dialog",
+    "mcpName": "mcp__playwright__browser_handle_dialog",
+    "description": "Handle a dialog"
+  },
+  {
+    "name": "browser_evaluate",
+    "mcpName": "mcp__playwright__browser_evaluate",
+    "description": "Evaluate JavaScript expression on page or element"
+  },
+  {
+    "name": "browser_file_upload",
+    "mcpName": "mcp__playwright__browser_file_upload",
+    "description": "Upload one or multiple files"
+  },
+  {
+    "name": "browser_drop",
+    "mcpName": "mcp__playwright__browser_drop",
+    "description": "Drop files or MIME-typed data onto an element, as if dragged from outside the page. At least one of \"paths\" or \"data\" must be provided."
+  },
+  {
+    "name": "browser_fill_form",
+    "mcpName": "mcp__playwright__browser_fill_form",
+    "description": "Fill multiple form fields"
+  },
+  {
+    "name": "browser_press_key",
+    "mcpName": "mcp__playwright__browser_press_key",
+    "description": "Press a key on the keyboard"
+  },
+  {
+    "name": "browser_type",
+    "mcpName": "mcp__playwright__browser_type",
+    "description": "Type text into editable element"
+  },
+  {
+    "name": "browser_navigate",
+    "mcpName": "mcp__playwright__browser_navigate",
+    "description": "Navigate to a URL"
+  },
+  {
+    "name": "browser_navigate_back",
+    "mcpName": "mcp__playwright__browser_navigate_back",
+    "description": "Go back to the previous page in the history"
+  },
+  {
+    "name": "browser_network_requests",
+    "mcpName": "mcp__playwright__browser_network_requests",
+    "description": "Returns a numbered list of network requests since loading the page. Use browser_network_request with the number to get full details."
+  },
+  {
+    "name": "browser_network_request",
+    "mcpName": "mcp__playwright__browser_network_request",
+    "description": "Returns full details (headers and body) of a single network request, or a single part if `part` is set. Use the number from browser_network_requests."
+  },
+  {
+    "name": "browser_run_code_unsafe",
+    "mcpName": "mcp__playwright__browser_run_code_unsafe",
+    "description": "Run a Playwright code snippet. Unsafe: executes arbitrary JavaScript in the Playwright server process and is RCE-equivalent."
+  },
+  {
+    "name": "browser_take_screenshot",
+    "mcpName": "mcp__playwright__browser_take_screenshot",
+    "description": "Take a screenshot of the current page. You can't perform actions based on the screenshot, use browser_snapshot for actions."
+  },
+  {
+    "name": "browser_snapshot",
+    "mcpName": "mcp__playwright__browser_snapshot",
+    "description": "Capture accessibility snapshot of the current page, this is better than screenshot"
+  },
+  {
+    "name": "browser_click",
+    "mcpName": "mcp__playwright__browser_click",
+    "description": "Perform click on a web page"
+  },
+  {
+    "name": "browser_drag",
+    "mcpName": "mcp__playwright__browser_drag",
+    "description": "Perform drag and drop between two elements"
+  },
+  {
+    "name": "browser_hover",
+    "mcpName": "mcp__playwright__browser_hover",
+    "description": "Hover over element on page"
+  },
+  {
+    "name": "browser_select_option",
+    "mcpName": "mcp__playwright__browser_select_option",
+    "description": "Select an option in a dropdown"
+  },
+  {
+    "name": "browser_tabs",
+    "mcpName": "mcp__playwright__browser_tabs",
+    "description": "List, create, close, or select a browser tab."
+  },
+  {
+    "name": "browser_wait_for",
+    "mcpName": "mcp__playwright__browser_wait_for",
+    "description": "Wait for text to appear or disappear or a specified time to pass"
+  }
+]

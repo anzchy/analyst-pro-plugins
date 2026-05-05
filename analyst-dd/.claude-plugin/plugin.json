@@ -1,0 +1,8 @@
+{
+  "name": "analyst-dd",
+  "version": "0.0.1",
+  "description": "Due diligence workflows: hard-tech DD + interview-notes synthesis",
+  "author": { "name": "anzchy", "url": "https://github.com/anzchy" },
+  "license": "MIT",
+  "keywords": ["dd", "tech-dd", "interviews", "尽职调查"]
+}

@@ -1,0 +1,7 @@
+{
+  "name": "hello-c2",
+  "version": "0.0.1",
+  "description": "Phase 0 spike form C plugin 2 (also declares playwright — same server, different plugin)",
+  "author": { "name": "anzchy" },
+  "license": "MIT"
+}

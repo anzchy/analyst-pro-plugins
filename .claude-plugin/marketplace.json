@@ -1,0 +1,30 @@
+{
+  "name": "analyst-pro-marketplace",
+  "owner": { "name": "anzchy" },
+  "plugins": [
+    {
+      "name": "analyst-deal",
+      "version": "0.0.1",
+      "description": "Deal-flow workflows for VC investors: project triage, IC memo synthesis, market intel scanning, Codex-powered report polish",
+      "source": "./analyst-deal",
+      "category": "investment",
+      "keywords": ["vc", "deal", "ic-memo", "intel", "投研", "尽调"]
+    },
+    {
+      "name": "analyst-dd",
+      "version": "0.0.1",
+      "description": "Due diligence workflows: hard-tech DD + interview-notes synthesis",
+      "source": "./analyst-dd",
+      "category": "investment",
+      "keywords": ["dd", "tech-dd", "interviews", "尽职调查"]
+    },
+    {
+      "name": "analyst-research",
+      "version": "0.0.1",
+      "description": "Industry research + report enrichment from interview notes",
+      "source": "./analyst-research",
+      "category": "research",
+      "keywords": ["industry-research", "report-enrichment", "行业研究"]
+    }
+  ]
+}

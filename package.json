@@ -1,0 +1,25 @@
+{
+  "name": "analyst-pro-plugins",
+  "version": "0.0.1",
+  "private": true,
+  "description": "Build tooling + 3-plugin Claude Code marketplace generated from AnalystPro source skills",
+  "type": "module",
+  "scripts": {
+    "build:plugins": "tsx scripts/build-from-source.ts",
+    "build:plugins:check": "tsx scripts/build-from-source.ts --check",
+    "build:plugins:plugin": "tsx scripts/build-from-source.ts --plugin",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "lint": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "gray-matter": "^4.0.3",
+    "tsx": "^4.19.0",
+    "typescript": "^5.6.0",
+    "vitest": "^2.1.0"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

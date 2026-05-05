@@ -1,0 +1,8 @@
+{
+  "name": "analyst-deal",
+  "version": "0.0.1",
+  "description": "Deal-flow workflows for VC investors: project triage, IC memo synthesis, market intel scanning, Codex-powered report polish",
+  "author": { "name": "anzchy", "url": "https://github.com/anzchy" },
+  "license": "MIT",
+  "keywords": ["vc", "deal", "ic-memo", "intel", "投研", "尽调"]
+}

@@ -1,0 +1,26 @@
+# Node
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+package-lock.json
+
+# Build artifacts
+dist/
+*.tsbuildinfo
+
+# Editor / OS
+.DS_Store
+.idea/
+.vscode/
+*.swp
+
+# Spike scratch
+spike/.probe-tmp/
+spike/**/.DS_Store
+
+# Local env (never commit API keys)
+.env
+.env.local
+.envrc

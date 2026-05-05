@@ -1,0 +1,8 @@
+{
+  "name": "analyst-research",
+  "version": "0.0.1",
+  "description": "Industry research + report enrichment from interview notes",
+  "author": { "name": "anzchy", "url": "https://github.com/anzchy" },
+  "license": "MIT",
+  "keywords": ["industry-research", "report-enrichment", "行业研究"]
+}

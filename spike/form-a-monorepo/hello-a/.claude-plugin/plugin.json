@@ -1,0 +1,8 @@
+{
+  "name": "hello-a",
+  "version": "0.0.1",
+  "description": "Phase 0 spike plugin (form A: relative-path subdirectory)",
+  "author": { "name": "anzchy" },
+  "license": "MIT",
+  "keywords": ["spike", "phase0"]
+}

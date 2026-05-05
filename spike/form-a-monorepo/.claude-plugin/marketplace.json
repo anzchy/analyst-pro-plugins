@@ -1,0 +1,14 @@
+{
+  "name": "spike-form-a",
+  "owner": { "name": "anzchy" },
+  "plugins": [
+    {
+      "name": "hello-a",
+      "version": "0.0.1",
+      "description": "Phase 0 spike: relative-path subdirectory plugin (form A)",
+      "source": "./hello-a",
+      "category": "spike",
+      "keywords": ["spike", "phase0"]
+    }
+  ]
+}
