@@ -5,8 +5,9 @@
 /** Special-case transform mode for commands that can't be done by pure regex. */
 export type TransformMode =
   | 'auto'              // standard transformer pipeline
-  | 'manual-generalize' // command needs generalization (e.g., interview-notes-enricher hardcodes 矽睿)
   | 'manual-copy'       // already generic; just rewrite frontmatter (e.g., enrich-report)
+  | 'manual-generalize' // (legacy) emit a stub with TODO banner; user generalizes once
+  | 'manual-handwritten' // file is human-owned: if exists, preserve; if missing, emit stub (idempotent)
 
 /** Source location of a command's SKILL.md, plus optional agent and transform mode. */
 export interface CommandSource {
@@ -104,8 +105,11 @@ export const PLUGIN_MANIFEST: Record<string, PluginDefinition> = {
         transform: 'auto',
       },
       'interview-notes-enricher': {
+        // Source kept for reference; the actual command is hand-written in
+        // analyst-dd/commands/interview-notes-enricher.md and preserved across
+        // rebuilds by the manual-handwritten mode (TODO-1 generalization done).
         source: 'HOME/.claude/skills/interview-notes-enricher/SKILL.md',
-        transform: 'manual-generalize',
+        transform: 'manual-handwritten',
       },
     },
     knowledge: [

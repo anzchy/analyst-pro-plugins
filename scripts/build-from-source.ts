@@ -87,6 +87,8 @@ interface BuildStats {
   commandsAuto: number
   commandsManualGeneralize: number
   commandsManualCopy: number
+  commandsManualHandwrittenPreserved: number
+  commandsManualHandwrittenStubbed: number
   knowledgeCopied: number
   knowledgeGenerated: number
   warnings: string[]
@@ -99,6 +101,8 @@ function makeStats(): BuildStats {
     commandsAuto: 0,
     commandsManualGeneralize: 0,
     commandsManualCopy: 0,
+    commandsManualHandwrittenPreserved: 0,
+    commandsManualHandwrittenStubbed: 0,
     knowledgeCopied: 0,
     knowledgeGenerated: 0,
     warnings: [],
@@ -397,6 +401,16 @@ function buildPlugin(
 
   // Process each command.
   for (const [cmdName, cmdSource] of Object.entries(def.commands)) {
+    const dst = join(cmdsDir, `${cmdName}.md`)
+
+    // 'manual-handwritten' has unique behavior: preserve existing file untouched.
+    // Only emit a stub if the file doesn't exist yet (first-time scaffold).
+    if (cmdSource.transform === 'manual-handwritten' && existsSync(dst)) {
+      stats.commandsManualHandwrittenPreserved++
+      if (verbose) console.log(`preserved ${name}/commands/${cmdName}.md (manual-handwritten)`)
+      continue
+    }
+
     let output: string
     try {
       switch (cmdSource.transform) {
@@ -412,6 +426,12 @@ function buildPlugin(
           output = transformManualGeneralize(name, cmdName, cmdSource)
           stats.commandsManualGeneralize++
           break
+        case 'manual-handwritten':
+          // File doesn't exist (caught above) — emit a one-time stub so the
+          // human contributor sees the source content + TODO banner.
+          output = transformManualGeneralize(name, cmdName, cmdSource)
+          stats.commandsManualHandwrittenStubbed++
+          break
         default: {
           const _exhaustive: never = cmdSource.transform
           throw new Error(`unknown transform: ${_exhaustive}`)
@@ -424,7 +444,6 @@ function buildPlugin(
       continue
     }
 
-    const dst = join(cmdsDir, `${cmdName}.md`)
     if (check) {
       const exists = existsSync(dst)
       const same = exists && readFileSync(dst, 'utf8') === output
@@ -523,7 +542,9 @@ function main(): void {
   console.log(
     `\nBuild ${args.check ? 'check' : 'complete'}: ${stats.pluginsBuilt} plugin(s); ` +
       `${stats.commandsAuto} auto, ${stats.commandsManualCopy} manual-copy, ` +
-      `${stats.commandsManualGeneralize} manual-generalize; ` +
+      `${stats.commandsManualGeneralize} manual-generalize, ` +
+      `${stats.commandsManualHandwrittenPreserved} hand-written preserved, ` +
+      `${stats.commandsManualHandwrittenStubbed} hand-written stubbed; ` +
       `${stats.knowledgeCopied} knowledge copied, ${stats.knowledgeGenerated} generated.`,
   )
 
