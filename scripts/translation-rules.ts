@@ -1,0 +1,219 @@
+// Purpose: Rules-as-data for transforming AnalystPro SKILL.md + agent .ts files
+// into Claude Code plugin command files. Imported by build-from-source.ts.
+//
+// See docs/PLAN.md § "Active design (Jina CLI)" for the full design rationale.
+
+/** A regex-based path replacement applied to the command body. */
+export interface PathReplacement {
+  readonly regex: RegExp
+  readonly to: string
+}
+
+/** A regex replacement applied to agent prompt text or command body. */
+export interface RegexReplacement {
+  readonly regex: RegExp
+  readonly replaceWith: string
+}
+
+/**
+ * Frontmatter fields to drop entirely. These are AnalystPro-private extensions
+ * (`ap-*`) or fields that are standard in Anthropic Skills but unsupported by
+ * Claude Code plugin commands (`agent`, `context`).
+ */
+export const DROP_FIELDS = [
+  'agent',
+  'context',
+  'ap-type',
+  'ap-ui-response',
+  'ap-icon',
+  'ap-tags',
+] as const
+
+/** Map AnalystPro short model names to plugin canonical model IDs. */
+export const MODEL_MAP: Record<string, string> = {
+  sonnet: 'claude-sonnet-4-6',
+  haiku: 'claude-haiku-4-5',
+  opus: 'claude-opus-4-7',
+}
+
+/**
+ * Path replacements applied to command body (and to extracted agent prompt).
+ * Workspace paths translate to either ${CLAUDE_PLUGIN_ROOT}/knowledge/ (read-only,
+ * shipped with plugin) or ./workspace/ (cwd-relative, written at runtime).
+ *
+ * Order matters: the explicit `workspace/X/` patterns run first, then bare
+ * `X/` patterns with a negative-lookbehind on `/` so they don't re-match
+ * prefixes already produced by earlier rules (which all end in `/`).
+ */
+export const PATH_REPLACEMENTS: PathReplacement[] = [
+  // Explicit workspace-prefixed forms (most common in SKILL.md)
+  { regex: /workspace\/knowledge\//g, to: '${CLAUDE_PLUGIN_ROOT}/knowledge/' },
+  { regex: /workspace\/state\//g, to: './workspace/state/' },
+  { regex: /workspace\/inbox\//g, to: './workspace/inbox/' },
+  // Bare forms (typical in agent prompts). Lookbehind ensures we don't double-replace
+  // text that already has a slash prefix from earlier rules.
+  { regex: /(?<!\/)\bknowledge\//g, to: '${CLAUDE_PLUGIN_ROOT}/knowledge/' },
+  { regex: /(?<!\/)\bstate\/deals\//g, to: './workspace/state/deals/' },
+  { regex: /(?<!\/)\bstate\/portfolio\//g, to: './workspace/state/portfolio/' },
+  { regex: /(?<!\/)\binbox\//g, to: './workspace/inbox/' },
+]
+
+/**
+ * Cleansing regexes applied ONLY to extracted agent prompts (not command body).
+ * Removes references to AnalystPro's Secretary→subagent dispatch model.
+ */
+export const AGENT_PROMPT_CLEANSING: RegexReplacement[] = [
+  // "派遣 X subagent" → "直接执行" (just the dispatch phrase, not trailing context)
+  { regex: /派遣\s*[\w-]+\s*subagent/g, replaceWith: '直接执行' },
+  // "delegate ... to X subagent via Task tool" → "handle ... directly"
+  {
+    regex: /delegate\s+([^.]+?)\s+to\s+[\w-]+\s+subagent\s+via\s+Task\s+tool\.?/gi,
+    replaceWith: 'handle $1 directly.',
+  },
+  // Remove standalone "Use Task tool to <verb> ..." sentences
+  { regex: /Use\s+Task\s+tool\s+to\s+[^.\n]*\.?\s*/gi, replaceWith: '' },
+  // Remove standalone "Has Task tool — <description>" capability mentions
+  { regex: /Has\s+Task\s+tool[^.\n]*\.?\s*/gi, replaceWith: '' },
+]
+
+/**
+ * Web tool replacements — translate AnalystPro browser_* / WebSearch / WebFetch
+ * usage patterns to jina-ai/cli invocations.
+ *
+ * Order matters: more-specific (URL-bearing) patterns must come before generic
+ * (bare-token) fallback patterns. Each regex is intentionally tight on the URL
+ * shape — match only `http(s)://...` or domain-shaped args, never raw prose.
+ */
+const URL_LIKE = `(?:https?:\\/\\/[^\\s\`'"<>)\\]]+|[a-z][\\w.-]+\\.[a-z]{2,}[^\\s\`'"<>)\\]]*)`
+
+export const WEB_TOOL_REPLACEMENTS: RegexReplacement[] = [
+  // WebSearch with quoted query (allow optional surrounding backticks for inline-code form).
+  {
+    regex: /\bWebSearch\s+`?"([^"]+)"`?/g,
+    replaceWith: 'Run via Bash: `jina search "$1" --json`',
+  },
+  // WebFetch with backtick-wrapped or bare URL/domain.
+  {
+    regex: new RegExp(`\\bWebFetch\\s+\`?(${URL_LIKE})\`?`, 'g'),
+    replaceWith: 'Run via Bash: `jina read $1 --json`',
+  },
+  // browser_navigate with quoted URL.
+  {
+    regex: new RegExp(`\\bbrowser_navigate\\s+"(${URL_LIKE})"`, 'g'),
+    replaceWith: 'Run via Bash: `jina read $1 --json`',
+  },
+  // browser_navigate with bare URL (no quotes).
+  {
+    regex: new RegExp(`\\bbrowser_navigate\\s+(${URL_LIKE})`, 'g'),
+    replaceWith: 'Run via Bash: `jina read $1 --json`',
+  },
+  // browser_snapshot — recommended replacement for extracting content; treat as jina read URL.
+  {
+    regex: /\bbrowser_snapshot\b/g,
+    replaceWith: '`jina read URL --json` 获取页面文本树',
+  },
+  // Standalone bare-token references (when keyword appears in prose without arg).
+  {
+    regex: /\bbrowser_navigate\b/g,
+    replaceWith: '`jina read URL --json`',
+  },
+  {
+    regex: /\bbrowser_extract_text\b/g,
+    replaceWith: '解析 jina read 输出的 markdown content 字段',
+  },
+  {
+    regex: /\bbrowser_extract_links\b/g,
+    replaceWith: '`jina read URL --links --json` 从 links 字段取链接',
+  },
+  {
+    regex: /\bbrowser_screenshot\b/g,
+    replaceWith: '`jina screenshot URL -o /tmp/X.png` (仅在需要图像时)',
+  },
+  {
+    regex: /\bbrowser_cookie_(import|status)\b/g,
+    replaceWith:
+      '此步需要登录态 — AskUserQuestion 让用户打开 URL 登录后把内容粘回来 ($1)',
+  },
+  // browser_click / browser_fill / browser_type — HITL fallback.
+  {
+    regex: /\bbrowser_(click|fill|type)\b/g,
+    replaceWith: '此步需要交互 — AskUserQuestion 让用户在浏览器完成 ($1) 后继续',
+  },
+]
+
+/**
+ * `allowed-tools` frontmatter patch: tools to remove + tools to add.
+ * Applied to the parsed allowed-tools list (whether it's a string or array).
+ */
+export const ALLOWED_TOOLS_PATCH = {
+  add: ['Bash(jina:*)'],
+  remove: [
+    'Task',
+    'browser_navigate',
+    'browser_extract_text',
+    'browser_extract_links',
+    'browser_click',
+    'browser_fill',
+    'browser_screenshot',
+    'browser_cookie_import',
+    'browser_cookie_status',
+  ],
+} as const
+
+/** Standard "Failure Mode Preflight" section injected at the top of every command body. */
+export const FAILURE_MODE_PREFLIGHT = `## Failure Mode Preflight (hard-fail by default)
+
+Run these checks before Step 1; abort on any failure.
+
+1. **\`jina\` CLI + \`JINA_API_KEY\` available**:
+   - Run via Bash: \`which jina && [ -n "\${JINA_API_KEY}" ] && echo OK || echo FAIL\`
+   - On FAIL → output exactly:
+     "本命令需要 jina-cli + JINA_API_KEY。请：
+      pip install jina-cli
+      export JINA_API_KEY=jina_xxxxxx
+      然后重启 Claude Code 重试。"
+     Then end the session — do NOT continue.
+
+2. **Plugin-shipped knowledge files readable**: each knowledge file referenced below
+   should be readable via \`Read \${CLAUDE_PLUGIN_ROOT}/knowledge/<file>.md\`. If a
+   read fails, output "Plugin install may be corrupted (knowledge file missing).
+   Please reinstall: /plugin uninstall <name> && /plugin install <name>." and end.
+
+3. **CWD writable**: write a marker file \`.analyst-write-test\` then delete it.
+   - On failure → switch to read-only mode (output report content to chat, do not
+     write files). Tell the user explicitly that no files will be written.
+
+4. **\`./workspace/\` directory check**: if \`./workspace/\` does not exist, ask the
+   user via AskUserQuestion:
+   - A) Create \`./workspace/\` in current directory (recommended)
+   - B) Specify a different path
+   - C) Skip workspace mode (write reports to \`./reports/<slug>/\` instead)
+`
+
+/**
+ * Per-command extra preflight checks injected after the standard preflight,
+ * keyed by command name.
+ */
+export const COMMAND_EXTRA_PREFLIGHT: Record<string, string> = {
+  'codex-polish-report': `
+
+5. **Codex MCP available**: verify the \`mcp__plugin_analyst-deal_codex__codex\`
+   tool is in your tool list.
+   - If missing → output "Codex MCP not available. Run \`codex login\` in your
+     terminal, then restart Claude Code." and end.
+`,
+  memo: `
+
+5. **Evidence file required**: this command synthesizes from accumulated evidence.
+   - Verify \`./workspace/state/<company-slug>/evidence.md\` exists and is non-empty.
+   - If missing or empty → HARD FAIL: "memo command needs prior evidence.
+     Run \`/analyst-deal:deal-analysis $ARGUMENTS\` first to accumulate evidence."
+`,
+  'interview-notes-enricher': `
+
+5. **Transcript glob has matches**: use Glob to verify the transcript glob (provided
+   by user in Step 0) actually matches files.
+   - If 0 matches → HARD FAIL: "No transcript files found matching the pattern.
+     Please verify the directory or adjust the glob."
+`,
+}
