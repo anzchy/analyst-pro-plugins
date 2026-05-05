@@ -385,10 +385,15 @@ function buildPlugin(
   verbose: boolean,
 ): void {
   const cmdsDir = resolve(REPO_ROOT, name, 'commands')
+  const knowledgeDir = resolve(REPO_ROOT, name, 'knowledge')
   ensureDir(cmdsDir)
+  ensureDir(knowledgeDir)
 
-  // Clean stale commands first (only in non-check mode).
-  if (!check) cleanStaleCommands(cmdsDir, def.commands)
+  // Clean stale commands and knowledge first (only in non-check mode).
+  if (!check) {
+    cleanStaleCommands(cmdsDir, def.commands)
+    cleanStaleKnowledge(knowledgeDir, def)
+  }
 
   // Process each command.
   for (const [cmdName, cmdSource] of Object.entries(def.commands)) {
@@ -452,6 +457,26 @@ function cleanStaleCommands(
     if (!entry.endsWith('.md')) continue
     if (!expected.has(entry)) {
       const full = join(cmdsDir, entry)
+      if (statSync(full).isFile()) rmSync(full)
+    }
+  }
+}
+
+/** Remove .md files in knowledgeDir that aren't in the manifest's knowledge + knowledgeGenerated list. */
+function cleanStaleKnowledge(
+  knowledgeDir: string,
+  def: PluginDefinition,
+): void {
+  if (!existsSync(knowledgeDir)) return
+  const expected = new Set<string>(def.knowledge)
+  for (const item of def.knowledgeGenerated ?? []) expected.add(item.out)
+  // Always keep LICENSE files (TODO-2 future) and .gitkeep
+  expected.add('LICENSE')
+  expected.add('.gitkeep')
+  for (const entry of readdirSync(knowledgeDir)) {
+    if (!entry.endsWith('.md') && entry !== 'LICENSE') continue
+    if (!expected.has(entry)) {
+      const full = join(knowledgeDir, entry)
       if (statSync(full).isFile()) rmSync(full)
     }
   }

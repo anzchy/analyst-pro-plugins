@@ -69,12 +69,22 @@ export const PLUGIN_MANIFEST: Record<string, PluginDefinition> = {
         transform: 'auto',
       },
     },
+    // Union of all knowledge files referenced by:
+    //   - deal-analyst.ts (8 files: bp/dd/ic/past_ic/red/report/tech)
+    //   - market-intel.ts (3 files: source_list/triage_rules/vc_watchlist)
+    //   - memo SKILL.md (1 file: ic_memo_template — already in set)
     knowledge: [
       'bp_framework.md',
-      'triage_rules.md',
+      'dd_checklist_template.md',
+      'dd_question_list_template.md',
       'ic_memo_template.md',
+      'past_ic_decisions.md',
       'red_flags.md',
+      'report_template.md',
       'source_list.md',
+      'tech_checklist.md',
+      'triage_rules.md',
+      'vc_watchlist.md',
     ],
     knowledgeGenerated: [
       {
@@ -120,7 +130,11 @@ export const PLUGIN_MANIFEST: Record<string, PluginDefinition> = {
         transform: 'manual-copy',
       },
     },
-    knowledge: ['industry_map.md', 'competitors.md', 'report_template.md'],
+    // industry-researcher.ts refs: competitors, glossary, industry_map.
+    // industry-research SKILL.md refs: competitors, industry_map (subset).
+    // report_template.md was previously misplaced here — it's deal-analyst's
+    // Phase 1 report structure, not an industry-research artifact.
+    knowledge: ['industry_map.md', 'competitors.md', 'glossary.md'],
     knowledgeGenerated: [
       {
         out: 'cn-data-sources.md',
