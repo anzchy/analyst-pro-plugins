@@ -17,7 +17,7 @@ Open items carried from Phase 0.5 transformer output. Each TODO is referenced by
   2. Re-test with a non-矽睿 transcript directory.
   3. Replace stub frontmatter description with the real one.
   4. Remove the `<!-- TODO[Phase 2 manual generalize]: -->` banner.
-- **Estimate**: ~1 hour.
+- **Estimate**: \~1 hour.
 - **Effort scope**: write directly in `analyst-dd/commands/interview-notes-enricher.md` (not transformer-generated; one-time human edit).
 
 ### TODO-2: Distill `cn-data-sources.md` (×2 plugins)
@@ -36,7 +36,7 @@ Open items carried from Phase 0.5 transformer output. Each TODO is referenced by
   2. List specific Chinese data sources by tier (free, login-required, paid).
   3. Apply identical content to both plugins (copy is fine; or generate from a single source via `knowledgeGenerated.transform: 'extract-fallback-chain-clean'` in a future transformer iteration).
   4. Remove the `<!-- TODO[Phase 2 manual refine]: -->` banner.
-- **Estimate**: ~30 min for the doc + 5 min to copy to both plugins.
+- **Estimate**: \~30 min for the doc + 5 min to copy to both plugins.
 
 ### TODO-3: Per-plugin READMEs
 
@@ -51,7 +51,7 @@ Open items carried from Phase 0.5 transformer output. Each TODO is referenced by
   3. Setup checklist (Jina CLI + `JINA_API_KEY`; Codex only for analyst-deal)
   4. Per-command usage example with real-world inputs and expected outputs
   5. Troubleshooting (missing tools, MCP issues)
-- **Estimate**: ~30 min per plugin (1.5 hours total).
+- **Estimate**: \~30 min per plugin (1.5 hours total).
 
 ### TODO-4: Knowledge sensitivity audit (A4-B from `docs/PLAN.md`)
 
@@ -66,7 +66,7 @@ Open items carried from Phase 0.5 transformer output. Each TODO is referenced by
   6. Personal info (emails, phones, internal links) → remove
   7. Git history scrub if any sensitive version was committed
 - **Output**: `analyst-pro-plugins/knowledge-audit.md` with verdict per file.
-- **Estimate**: ~1 hour.
+- **Estimate**: \~1 hour.
 
 ---
 
@@ -75,6 +75,7 @@ Open items carried from Phase 0.5 transformer output. Each TODO is referenced by
 ### Add knowledge LICENSE files
 
 After audit (TODO-4), create:
+
 - `analyst-deal/knowledge/LICENSE` — CC-BY-NC-4.0 full text
 - `analyst-dd/knowledge/LICENSE` — CC-BY-NC-4.0
 - `analyst-research/knowledge/LICENSE` — CC-BY-NC-4.0

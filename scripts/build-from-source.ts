@@ -343,8 +343,28 @@ function generateKnowledge(
   ensureDir(dstDir)
 
   for (const item of generated) {
-    const src = resolveSource(item.source)
     const dst = join(dstDir, item.out)
+
+    // Preserve-on-existence: if file exists with no TODO-banner sentinel, treat
+    // it as hand-refined and never overwrite. This mirrors manual-handwritten
+    // mode for commands. Initial stub generation runs once when file is missing.
+    if (existsSync(dst)) {
+      const existingContent = readFileSync(dst, 'utf8')
+      const isStillStub = existingContent.includes(
+        '<!-- TODO[Phase 2 manual refine]:',
+      )
+      if (!isStillStub) {
+        // File has been hand-refined; preserve untouched.
+        if (check) {
+          // No-op in check mode (already preserved).
+        }
+        stats.knowledgeGenerated++ // count as accounted-for
+        continue
+      }
+      // else: still a stub — proceed to regeneration below.
+    }
+
+    const src = resolveSource(item.source)
     if (!existsSync(src)) {
       stats.warnings.push(
         `knowledge-generated source missing: ${src} (${pluginName}/knowledge/${item.out} skipped)`,
