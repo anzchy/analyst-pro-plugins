@@ -1,0 +1,18 @@
+{
+  "name": "spike-form-b",
+  "owner": { "name": "anzchy" },
+  "plugins": [
+    {
+      "name": "hello-b",
+      "version": "0.0.1",
+      "description": "Phase 0 spike: git-subdir schema for monorepo-with-subdirectory plugin (form B)",
+      "source": {
+        "source": "git-subdir",
+        "url": ".",
+        "path": "hello-b"
+      },
+      "category": "spike",
+      "keywords": ["spike", "phase0"]
+    }
+  ]
+}

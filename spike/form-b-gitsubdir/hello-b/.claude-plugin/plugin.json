@@ -1,0 +1,8 @@
+{
+  "name": "hello-b",
+  "version": "0.0.1",
+  "description": "Phase 0 spike plugin (form B: git-subdir schema)",
+  "author": { "name": "anzchy" },
+  "license": "MIT",
+  "keywords": ["spike", "phase0"]
+}
