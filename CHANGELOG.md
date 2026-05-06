@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.2.0] - 2026-05-06
+## [0.0.2] - 2026-05-06
 
 ### Added (`analyst-deal` only — other plugins unchanged at 0.0.1)
 
@@ -21,7 +21,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Per-company persistent state files reused across quarters: `./workspace/state/portfolio/<slug>/project_baseline.yml` (investment terms) and `competitors.yml` (editable competitor list).
 - Design doc at `docs/designs/issue-01-portfolio-tracking.md` capturing premises (P1–P6), architecture (Approach B with two sub-agents), and locked decisions on the four open questions.
 - Prompt-injection guards added to the new command and both sub-agents — external content (PDFs, prior reports, fetched competitor pages) is treated as untrusted data, never instructions.
-- Manifest version bumped: `analyst-deal/.claude-plugin/plugin.json` and `.claude-plugin/marketplace.json` analyst-deal entry both `0.0.1` → `0.2.0`. Other plugins (`analyst-dd`, `analyst-research`) remain at `0.0.1`.
+- Manifest version bumped: `analyst-deal/.claude-plugin/plugin.json` and `.claude-plugin/marketplace.json` analyst-deal entry both `0.0.1` → `0.0.2` (patch bump — additive scope on a pre-1.0 plugin). Other plugins (`analyst-dd`, `analyst-research`) remain at `0.0.1`.
 
 ## [0.1.0] - 2026-05-05
 
