@@ -246,4 +246,4 @@ ratios:
 
 ---
 
-**Reviewer concerns / 待你拍板的微调：** 见 §7 Open questions。
+**Implementation notes:** 所有 §7 中列出的 Decisions (locked) 已在主命令、两个 sub-agents、三个 knowledge 文件中实施。详见 PR #4 的 commit history。

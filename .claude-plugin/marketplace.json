@@ -4,11 +4,11 @@
   "plugins": [
     {
       "name": "analyst-deal",
-      "version": "0.0.1",
-      "description": "Deal-flow workflows for VC investors: project triage, IC memo synthesis, market intel scanning, Codex-powered report polish",
+      "version": "0.2.0",
+      "description": "Deal-flow workflows for VC investors: project triage, IC memo synthesis, market intel scanning, Codex-powered report polish, quarterly post-investment tracking",
       "source": "./analyst-deal",
       "category": "investment",
-      "keywords": ["vc", "deal", "ic-memo", "intel", "投研", "尽调"]
+      "keywords": ["vc", "deal", "ic-memo", "intel", "投研", "尽调", "投后跟踪"]
     },
     {
       "name": "analyst-dd",

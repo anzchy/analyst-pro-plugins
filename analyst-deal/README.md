@@ -22,7 +22,7 @@ VC deal-flow workflows for Claude Code: project triage, IC memo synthesis, marke
 
 ### Required: Jina AI CLI
 
-All four commands use [`jina-ai/cli`](https://github.com/jina-ai/cli) for web search and content extraction. Install once:
+All five commands use [`jina-ai/cli`](https://github.com/jina-ai/cli) for web search and content extraction (the new `portfolio-tracking` command also delegates to two sub-agents that follow the same jina-only policy). Install once:
 
 ```bash
 pip install jina-cli

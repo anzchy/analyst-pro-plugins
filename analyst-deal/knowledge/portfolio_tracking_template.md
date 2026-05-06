@@ -120,7 +120,7 @@ This is the canonical structure for `/analyst-deal:portfolio-tracking` output. M
 
 {{由 N 个 competitor-enricher sub-agent 并行填充，每个产出符合 competitor_card_schema.md 的档案块。
 
-排序规则：与本公司业务相似度从高到低；用户在 AskUserQuestion 阶段确认顺序。
+排序规则：按 `competitors.yml` 中的顺序（即用户在 Step 2.1/2.2 AskUserQuestion 阶段确认/编辑后的最终顺序）。如希望按业务相似度排序，应在 Step 2 编辑 `competitors.yml` 时手动调整顺序。
 
 每家档案块结构：
 #### N、{{竞对名}}
@@ -162,7 +162,7 @@ This is the canonical structure for `/analyst-deal:portfolio-tracking` output. M
 |---|---|
 | `{{投前估值}}` `{{投资金额}}` `{{持股比例}}` 等基线字段 | `project_baseline.yml`（首次手工录入，后续季度复用） |
 | `{{当年}}` `{{YYYY 年 QX 季度}}` | 命令参数（`$ARGUMENTS` 中的季度部分） |
-| 经营情况各段 | 主命令读 `./workspace/state/{slug}/` 下董事会材料/访谈/季报/新闻后内联生成 |
+| 经营情况各段 | 主命令读 `./workspace/state/portfolio/{slug}/` 下用户在 Step 3 提供的董事会材料/访谈/季报/新闻路径后内联生成 |
 | 财务情况整段 | `financial-analyzer` agent 输出，整段嵌入 |
 | 竞争对手整段 | N × `competitor-enricher` agent 输出，按用户指定顺序拼接 |
 | 小结 | 主命令在前文全部就位后内联生成（必须引用前文具体数字与事件，不允许空泛） |
