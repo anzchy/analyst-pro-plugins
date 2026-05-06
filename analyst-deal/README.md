@@ -8,6 +8,7 @@ VC deal-flow workflows for Claude Code: project triage, IC memo synthesis, marke
 | `/analyst-deal:memo [公司名]` | Synthesize an IC memo draft from accumulated evidence (requires prior `deal-analysis` run). |
 | `/analyst-deal:codex-polish-report [公司名]` | Polish an existing deal-DD report through OpenAI Codex (GPT-5) for clarity and professional tone. |
 | `/analyst-deal:news-scan [赛道]` | Daily / weekly market intel scan, scoped by sector or VC firm. |
+| `/analyst-deal:portfolio-tracking [公司名] [季度]` | Generate quarterly post-investment tracking report. Orchestrates two sub-agents: `financial-analyzer` (extracts 三表 + ratios from 合并报表) and `competitor-enricher` (parallel jina research per competitor). |
 
 ## Install
 
@@ -104,6 +105,34 @@ Scans market intel for a sector. Optional argument; defaults to all-sector daily
 
 Output: per-sector intel briefing markdown at `./workspace/state/intel/<DATE>-news-scan.md`.
 
+### `/analyst-deal:portfolio-tracking [公司名] [季度]`
+
+Generates a quarterly post-investment tracking report following the field-tested 5-section format (项目概况 / 股权变更 / 业务发展 / 行业发展 / 小结).
+
+```
+/analyst-deal:portfolio-tracking 矽昌通信 2025Q4
+```
+
+Architecture: the main command orchestrates two specialist sub-agents:
+
+- **`financial-analyzer`** — extracts 资产负债表 / 利润表 / 现金流量表 from one or more 合并报表 PDFs/xlsx, normalizes to 万元, computes 5 ratios (毛利率 / 销售费用率 / 管理费用率 / 研发费用率 / 财务费用率), writes the financial section. **Numbers are extracted, not generated** — the agent is forbidden from inventing or rounding outside the rules in `knowledge/financial_ratios.md`.
+- **`competitor-enricher`** — researches one competitor via Jina (≤8 calls budget per company), produces a structured card (股权结构 / 产品方向 / 融资进展 / Evidence URLs) matching `knowledge/competitor_card_schema.md`. Multiple instances dispatched in parallel for the competitor list.
+
+First-time setup per company writes `project_baseline.yml` (one-time investment terms) and `competitors.yml` (editable competitor list). Subsequent quarterly runs reuse both files; user can edit competitors in-flight via AskUserQuestion.
+
+Required inputs:
+- 合并报表 PDF/xlsx (current period; optional 1-3 历史 periods for year-over-year)
+- Optional: previous tracking report (auto-inherits Section 二 historical equity changes), board materials, interview notes, news clippings
+
+Output: `./workspace/state/portfolio/<slug>/<YYYYQX>_post_investment_tracking.md`.
+
+**Hard guarantees**:
+- Financial numbers traceable to specific 合并报表 line items; gaps shown as `—` and listed in 数据缺口 section
+- Competitor data points all carry source URLs; conflicts between sources are listed side-by-side
+- 主上下文 token 用量峰值控制在 ≤ 30k（sub-agents 隔离了 jina raw scrape）
+
+See [`docs/designs/issue-01-portfolio-tracking.md`](../docs/designs/issue-01-portfolio-tracking.md) for the full design doc.
+
 ## Troubleshooting
 
 ### Preflight fails with "本命令需要 jina-cli + JINA_API_KEY"
@@ -138,7 +167,7 @@ You haven't run `deal-analysis` first for that company. The memo command synthes
 
 ## Output locations
 
-All commands write to `./workspace/state/deals/...` relative to your current working directory:
+All commands write to `./workspace/state/...` relative to your current working directory:
 
 ```
 ./workspace/state/deals/
@@ -152,6 +181,10 @@ All commands write to `./workspace/state/deals/...` relative to your current wor
 └── rejected/                            (deals declined at HITL gates)
 ./workspace/state/intel/                 ← news-scan
 └── <DATE>-news-scan.md
+./workspace/state/portfolio/<slug>/      ← portfolio-tracking
+├── project_baseline.yml                 (one-time investment terms; reused each quarter)
+├── competitors.yml                      (editable competitor list; reused each quarter)
+└── <YYYYQX>_post_investment_tracking.md (one report per quarter)
 ```
 
 ## See also

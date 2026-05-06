@@ -24,3 +24,11 @@ spike/**/.DS_Store
 .env
 .env.local
 .envrc
+
+# Reference materials — real portfolio company artifacts (financials, internal reports, BPs).
+# Used locally to anchor design/test work; MUST NOT enter the public repo.
+docs/reference/
+
+# Runtime workspace — generated reports, evidence, baseline state files.
+# Per-developer; never commit.
+workspace/

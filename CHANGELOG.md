@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **`/analyst-deal:portfolio-tracking [公司名] [季度]`** — quarterly post-investment tracking report generator (issue [#1](https://github.com/anzchy/analyst-pro-plugins/issues/1)). Orchestrates two new sub-agents:
+  - `analyst-deal/agents/financial-analyzer.md` — extracts 三表 from 合并报表, normalizes to 万元, computes 5 financial ratios. Hard rule: numbers must be traceable to source line items; LLM does not generate numbers.
+  - `analyst-deal/agents/competitor-enricher.md` — researches one competitor via Jina (≤8 calls each), outputs a structured card. Multiple instances dispatched in parallel for the competitor list.
+- Three new knowledge files supporting the above:
+  - `analyst-deal/knowledge/portfolio_tracking_template.md` — 5-section report skeleton (mirrors field-tested format)
+  - `analyst-deal/knowledge/financial_ratios.md` — ratio formulas as constants (毛利率 / 销售费用率 / 管理费用率 / 研发费用率 / 财务费用率), unit conversion rules, audit guarantees
+  - `analyst-deal/knowledge/competitor_card_schema.md` — output schema for competitor-enricher with fully-worked sample
+- Per-company persistent state files reused across quarters: `./workspace/state/portfolio/<slug>/project_baseline.yml` (investment terms) and `competitors.yml` (editable competitor list).
+- Design doc at `docs/designs/issue-01-portfolio-tracking.md` capturing premises, alternatives considered, and locked decisions.
+
 ## [0.1.0] - 2026-05-05
 
 ### Added
