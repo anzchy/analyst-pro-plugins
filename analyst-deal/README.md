@@ -192,5 +192,5 @@ All commands write to `./workspace/state/...` relative to your current working d
 ## See also
 
 - [Top-level marketplace README](../README.md) — repo overview, install all 3 plugins
-- [USAGE.md](../docs/guide/USAGE.md) — comprehensive usage guide for all plugins
+- [AnalystPro User Guide](../docs/guide/analyst-pro-user-guide.md) — comprehensive usage guide for all plugins
 - [PLAN.md](../docs/PLAN.md) — design rationale and architecture

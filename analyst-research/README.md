@@ -185,7 +185,7 @@ This should never happen — the command's hard rule is additive-only. If it doe
 ## See also
 
 - [Top-level marketplace README](../README.md)
-- [USAGE.md](../docs/guide/USAGE.md) — comprehensive usage
+- [AnalystPro User Guide](../docs/guide/analyst-pro-user-guide.md) — comprehensive usage
 - [PLAN.md](../docs/PLAN.md) — design rationale
 - `${CLAUDE_PLUGIN_ROOT}/knowledge/industry_map.md` — known industry baselines and category definitions
 - `${CLAUDE_PLUGIN_ROOT}/knowledge/competitors.md` — sector-tagged competitor inventory

@@ -158,7 +158,7 @@ This plugin's data preflight prioritizes Chinese sources (36kr / huxiu / patenth
 ## See also
 
 - [Top-level marketplace README](../README.md)
-- [USAGE.md](../docs/guide/USAGE.md) — comprehensive usage
+- [AnalystPro User Guide](../docs/guide/analyst-pro-user-guide.md) — comprehensive usage
 - [PLAN.md](../docs/PLAN.md) — design rationale
 - `${CLAUDE_PLUGIN_ROOT}/knowledge/tech_checklist.md` — sector-specific feasibility benchmarks (semiconductor, fusion, materials, space)
 - `${CLAUDE_PLUGIN_ROOT}/knowledge/export_control_rules.md` — BIS Entity List / ECCN reference

@@ -27,11 +27,11 @@ Comprehensive guide for both **end users** (install + use the plugins in Claude 
 
 Three independent Claude Code plugins for VC investment workflows. Each plugin's commands appear with its own slash-prefix in Claude Code's command palette:
 
-| Plugin | Commands | Typical use |
-|---|---|---|
-| **`analyst-deal`** | `/analyst-deal:deal-analysis`, `/analyst-deal:memo`, `/analyst-deal:codex-polish-report`, `/analyst-deal:news-scan` | Project triage → analysis → IC memo synthesis, market intel scanning |
-| **`analyst-dd`** | `/analyst-dd:tech-dd`, `/analyst-dd:interview-notes-enricher` | Hard-tech due diligence + interview-notes synthesis |
-| **`analyst-research`** | `/analyst-research:industry-research`, `/analyst-research:enrich-report` | Industry research + report enrichment from interview notes |
+| Plugin                 | Commands                                                                                                                                                | Typical use                                                                                              |
+| ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------- |
+| **`analyst-deal`**     | `/analyst-deal:deal-analysis`, `/analyst-deal:memo`, `/analyst-deal:codex-polish-report`, `/analyst-deal:news-scan`, `/analyst-deal:portfolio-tracking` | Project triage → analysis → IC memo synthesis, market intel scanning, quarterly post-investment tracking |
+| **`analyst-dd`**       | `/analyst-dd:tech-dd`, `/analyst-dd:interview-notes-enricher`                                                                                           | Hard-tech due diligence + interview-notes synthesis                                                      |
+| **`analyst-research`** | `/analyst-research:industry-research`, `/analyst-research:enrich-report`                                                                                | Industry research + report enrichment from interview notes                                               |
 
 All three use [Jina AI CLI](https://github.com/jina-ai/cli) for web search and content extraction (no Playwright headache, no Chromium download). One plugin (`analyst-deal`) additionally uses [Codex MCP](https://github.com/openai/codex) for the `codex-polish-report` command.
 
@@ -71,6 +71,7 @@ Restart Claude Code (so it picks up the new env var). Then use:
 
 ```
 /analyst-deal:deal-analysis 某半导体公司
+/analyst-deal:portfolio-tracking 某被投公司 2026Q1
 /analyst-dd:tech-dd 某半导体公司
 /analyst-research:industry-research 半导体先进封装
 ```
@@ -79,7 +80,7 @@ Restart Claude Code (so it picks up the new env var). Then use:
 
 ## Repo strategy: 1 repo vs 3
 
-**Decision: 1 GitHub repo (`anzchy/analyst-pro-plugins`) hosts all 3 plugins as subdirectories.**
+**Decision: 1 GitHub repo (********`anzchy/analyst-pro-plugins`********\*\*\*\*) hosts all 3 plugins as subdirectories.**
 
 ### Why 1 repo (recommended)
 
@@ -90,7 +91,7 @@ The Anthropic plugin spec supports a single `marketplace.json` listing multiple 
   "name": "analyst-pro-marketplace",
   "owner": { "name": "anzchy" },
   "plugins": [
-    { "name": "analyst-deal", "version": "0.0.1", "source": "./analyst-deal", ... },
+    { "name": "analyst-deal", "version": "0.0.2", "source": "./analyst-deal", ... },
     { "name": "analyst-dd", "version": "0.0.1", "source": "./analyst-dd", ... },
     { "name": "analyst-research", "version": "0.0.1", "source": "./analyst-research", ... }
   ]
@@ -98,11 +99,13 @@ The Anthropic plugin spec supports a single `marketplace.json` listing multiple 
 ```
 
 End users:
+
 - Add **one** marketplace: `/plugin marketplace add anzchy/analyst-pro-plugins`
 - Install **selectively** from that marketplace: `/plugin install analyst-deal@analyst-pro-marketplace`
 - Update **once** for all plugins: `/plugin marketplace update analyst-pro-marketplace` then re-install
 
 Maintainers:
+
 - One repo to push, tag, version, open issues against
 - Coordinated release of related plugins (e.g., shared knowledge file updates land together)
 - Single CI pipeline runs the transformer + tests across all plugins
@@ -113,20 +116,21 @@ Considered alternative: `anzchy/analyst-deal-plugin`, `anzchy/analyst-dd-plugin`
 
 Tradeoffs that made us reject this:
 
-| Aspect | 3-repo | 1-repo |
-|---|---|---|
-| User adds N marketplaces | 3 | 1 |
-| Coordinated release | Hard (3 separate tags) | Easy (1 commit) |
-| Shared transformer | Needs duplication or cross-repo dep | Same dir |
-| Issue tracking | Fragmented across 3 repos | Single tracker |
-| Knowledge file dedup | Hard | Trivial |
-| Discoverability | 3 repos = harder to GitHub-search | Easier |
+| Aspect                   | 3-repo                              | 1-repo          |
+| ------------------------ | ----------------------------------- | --------------- |
+| User adds N marketplaces | 3                                   | 1               |
+| Coordinated release      | Hard (3 separate tags)              | Easy (1 commit) |
+| Shared transformer       | Needs duplication or cross-repo dep | Same dir        |
+| Issue tracking           | Fragmented across 3 repos           | Single tracker  |
+| Knowledge file dedup     | Hard                                | Trivial         |
+| Discoverability          | 3 repos = harder to GitHub-search   | Easier          |
 
-The only argument for 3 repos was "users only want one plugin and don't want the others' weight" — but in 1-repo mode, **only the requested plugin's files are pulled into the user's `~/.claude/plugins/`** during install. The other plugin directories sit unused in the marketplace clone but cost nothing at runtime. Marketplace clone itself is ~few MB, not a real concern.
+The only argument for 3 repos was "users only want one plugin and don't want the others' weight" — but in 1-repo mode, \*\*only the requested plugin's files are pulled into the user's \*\***`~/.claude/plugins/`** during install. The other plugin directories sit unused in the marketplace clone but cost nothing at runtime. Marketplace clone itself is \~few MB, not a real concern.
 
 ### When you might split later (v0.2+)
 
 Three triggers would justify splitting:
+
 1. **Different release cadence** — if `analyst-deal` ships every week and `analyst-research` ships every quarter, the noise of unrelated tags on each repo's release feed becomes painful.
 2. **Different ownership** — if `analyst-research` gets co-maintained by a different team that wants their own GitHub access boundary.
 3. **License divergence** — if `analyst-dd`'s knowledge files end up needing a stricter license than the others.
@@ -219,6 +223,7 @@ In Claude Code:
 You should see: `Successfully added marketplace: analyst-pro-marketplace`.
 
 > ⚠️ Note on URL forms:
+>
 > - **Works**: `anzchy/analyst-pro-plugins` (GitHub shorthand) or `./relative/path` (local dev)
 > - **Does NOT work**: `file:///absolute/path/...` (silently no-ops in current Claude Code)
 
@@ -292,6 +297,7 @@ codex login
 ```
 
 You should see (relevant lines):
+
 - `plugin:analyst-deal:codex · ✓ connected · 2 tools` (only if you installed analyst-deal AND ran `codex login`)
 
 If `codex` shows `✗ failed`, see [Troubleshooting](#troubleshooting).
@@ -353,6 +359,42 @@ Scans market intel for a sector. Optional argument; defaults to all-sector daily
 
 Output: per-sector intel briefing markdown at `./workspace/state/intel/YYYYMMDD-news-scan.md`.
 
+### `/analyst-deal:portfolio-tracking [公司名] [季度]`
+
+Quarterly post-investment tracking report following the field-tested 5-section format (项目概况 / 股权变更 / 业务发展 / 行业发展 / 小结). Added in `analyst-deal` v0.0.2 (issue [#1](https://github.com/anzchy/analyst-pro-plugins/issues/1)).
+
+```
+/analyst-deal:portfolio-tracking 矽昌通信 2026Q1
+```
+
+**Architecture**: the main command orchestrates 5 sections, dispatching two specialist sub-agents (the first agents to ship in this marketplace):
+
+- **`financial-analyzer`** — extracts 资产负债表 / 利润表 / 现金流量表 from one or more 合并报表 PDF/xlsx files, normalizes 元 → 万元 via constant `10000`, computes 5 financial ratios (毛利率 / 销售费用率 / 管理费用率 / 研发费用率 / 财务费用率) per the formulas in `knowledge/financial_ratios.md`. **Numbers are extracted, not generated**: every number is traceable to a specific 合并报表 line; gaps render as `—` and surface in a 数据缺口 section. Output capped at ≤ 2,500 tokens; includes an Evidence Ledger appendix for audit.
+- **`competitor-enricher`** — researches one competitor via Jina (≤ 8 calls budget per company), produces a structured card matching `knowledge/competitor_card_schema.md` (股权结构 / 产品方向 / 融资进展 / Evidence URLs). Multiple instances dispatched in parallel for the competitor list. Output capped at ≤ 800 tokens. Tools restricted to `Bash, Read, Glob` (no `WebFetch`) to honor the plugin's jina-only web policy.
+
+**Default input directory**: `./workspace/state/portfolio/<slug>/`. Step 3 auto-scans this directory for filename patterns matching each material type (`*合并报表*.pdf` / `*财务报表*.pdf` / `*投后跟进报告*.{md,pdf,docx}` / `*董事会*.md` / `*访谈*.md` / `*新闻*.md` etc.) and presents them via `AskUserQuestion` with two options:
+
+- **A) Use auto-detected paths (recommended)** — zero typing if you've dropped quarterly materials into the project directory
+- **B) Override with custom paths** — for materials still in `~/Downloads/` or scattered locations
+
+If A is chosen but no 合并报表 was discovered, the command refuses A (合并报表 is required) and asks you to either drop the file in or fall back to B.
+
+**Per-company persistent state files** reused across quarters:
+
+- `./workspace/state/portfolio/<slug>/project_baseline.yml` — one-time investment terms (基金主体 / 投资协议日期 / 投前估值 / 投资金额 / 持股比例 / 投资完成时点股权结构表). First run prompts; subsequent runs reuse without asking.
+- `./workspace/state/portfolio/<slug>/competitors.yml` — editable competitor list. Step 2 lets you add/remove/reorder before the parallel dispatch.
+
+**Hard guarantees**:
+
+- Financial numbers traceable to specific 合并报表 line items; gaps shown as `—` and listed in 数据缺口
+- Every competitor data point carries a source URL; conflicts between sources are listed side-by-side
+- Prompt-injection guards in parent + both agents: external content (PDFs, prior reports, fetched competitor pages) is treated as untrusted data, never instructions
+- 主上下文 token 用量峰值控制在 ≤ 30k tokens (sub-agents isolate raw scrape from main context)
+
+Output: `./workspace/state/portfolio/<slug>/<YYYYQX>_post_investment_tracking.md`.
+
+See [`docs/designs/issue-01-portfolio-tracking.md`](../designs/issue-01-portfolio-tracking.md) for the full design doc with premises (P1–P6), architecture rationale, and locked decisions.
+
 ### `/analyst-dd:tech-dd [公司名]`
 
 Hard-tech due diligence — paper/patent search, technical feasibility checklist, expert-interview support, contradiction marking, export-control screening.
@@ -365,11 +407,21 @@ Output: annotated DD report at `./workspace/state/deals/techdd/han-wu-ji/`.
 
 Sectors covered: semiconductor (fab/fabless/EDA), advanced packaging, nuclear fusion, new materials, reusable rockets / space tech.
 
-### `/analyst-dd:interview-notes-enricher`
+### `/analyst-dd:interview-notes-enricher [interviewee?]`
 
-> ⚠️ **Phase 1 stub** — this command currently emits a TODO banner. Phase 1 will replace hardcoded project values with `AskUserQuestion`-collected parameters. See [TODOs.md](../../TODOs.md) TODO-1.
+Incrementally syncs raw per-person interview transcripts into a consolidated curated Q\&A memo. Strictly additive — preserves existing Q\&A, adds only missing items, keeps transcript wording verbatim. Trigger when you ask to 整理 / 补充 / 扩写 / 继续 / 更新 访谈纪要.
 
-Once generalized: incrementally syncs raw interview transcripts into a consolidated memo, preserving verbatim Q&A.
+```
+/analyst-dd:interview-notes-enricher                # batch mode (rare default)
+/analyst-dd:interview-notes-enricher 张三           # only sync interviewee 张三
+```
+
+Step 0 auto-detects the consolidated memo file and transcript files in `cwd` (`*纪要*final*.md` / `*memo*.md` / `*访谈*.md` / `*交流*.md`) and presents `AskUserQuestion` with:
+
+- **A) Use auto-detected paths (recommended)**
+- **B) Override with custom paths** — for project layouts that don't match the default patterns
+
+Generalized in v0.1.0 (TODO-1) — was previously hardcoded to one project. Now project-agnostic.
 
 ### `/analyst-research:industry-research [行业]`
 
@@ -415,7 +467,8 @@ When the maintainer pushes an update, end users do:
 ```
 
 Notes:
-- Re-install **does NOT touch your `./workspace/` files**. Reports, evidence, and inbox files are yours.
+
+- Re-install **does NOT touch your ************`./workspace/`************ files**. Reports, evidence, and inbox files are yours.
 - The plugin's `~/.claude/plugins/<name>/` directory gets overwritten with the new version.
 - If a command's `allowed-tools` field changed, Claude Code may prompt you for permission on first run after update.
 
@@ -443,12 +496,14 @@ To check installed versions:
 ```
 
 What gets removed:
+
 - Plugin files in `~/.claude/plugins/<name>/`
 - Plugin's MCP server entries from your active session
 
 What stays:
-- **Your `./workspace/` directory** — reports, evidence, inboxes
-- **`JINA_API_KEY` env var** — if you want to fully clean up, also unset it from `~/.zshrc`
+
+- **Your ************`./workspace/`************ directory** — reports, evidence, inboxes
+- **`JINA_API_KEY`**\*\* env var\*\* — if you want to fully clean up, also unset it from `~/.zshrc`
 - Codex CLI install — also untouched
 
 If you want a totally clean slate:
@@ -469,18 +524,21 @@ pip uninstall jina-cli
 
 ## Troubleshooting
 
-### Symptom: `/analyst-deal:deal-analysis` fails preflight with "本命令需要 jina-cli + JINA_API_KEY"
+### Symptom: `/analyst-deal:deal-analysis` fails preflight with "本命令需要 jina-cli + JINA\_API\_KEY"
 
 **Cause**: One of these:
+
 - `jina` is not on PATH — `which jina` returns empty
 - `JINA_API_KEY` is unset in the shell that launched Claude Code
 - You set the env var AFTER launching Claude Code (it doesn't pick up shell changes mid-session)
 
 **Fix**:
+
 ```bash
 which jina                       # if empty, run: pip install jina-cli
 echo "${JINA_API_KEY:0:10}..."   # if empty, run: export JINA_API_KEY=jina_xxxxxx
 ```
+
 Then **fully restart Claude Code** (quit + reopen, not just /reload-plugins).
 
 ### Symptom: `/mcp` shows `plugin:analyst-deal:codex · ✗ failed`
@@ -488,10 +546,12 @@ Then **fully restart Claude Code** (quit + reopen, not just /reload-plugins).
 **Cause**: Codex CLI not installed or not authenticated.
 
 **Fix**:
+
 ```bash
 which codex      # if empty: npm install -g @openai/codex
 codex login      # follows browser OAuth
 ```
+
 Then `/plugin uninstall analyst-deal && /plugin install analyst-deal@analyst-pro-marketplace && /reload-plugins`.
 
 ### Symptom: `/plugin marketplace add anzchy/analyst-pro-plugins` succeeds but `/plugin install` says "no plugin found"
@@ -499,6 +559,7 @@ Then `/plugin uninstall analyst-deal && /plugin install analyst-deal@analyst-pro
 **Cause**: Marketplace cache is stale.
 
 **Fix**:
+
 ```
 /plugin marketplace update analyst-pro-marketplace
 /plugin install analyst-deal@analyst-pro-marketplace
@@ -509,10 +570,13 @@ Then `/plugin uninstall analyst-deal && /plugin install analyst-deal@analyst-pro
 **Cause**: Claude Code's `/plugin marketplace add` does NOT support `file://` URL form (silently no-ops).
 
 **Fix**: For local dev, use a relative path:
+
 ```
 /plugin marketplace add ./relative/path/to/analyst-pro-plugins
 ```
+
 For published plugins, use the GitHub shorthand:
+
 ```
 /plugin marketplace add anzchy/analyst-pro-plugins
 ```
@@ -522,6 +586,7 @@ For published plugins, use the GitHub shorthand:
 **Cause**: API key invalid, expired, or rate-limited.
 
 **Fix**:
+
 ```bash
 # Verify key is set correctly
 env | grep JINA_API_KEY
@@ -537,6 +602,7 @@ echo "https://example.com" | jina read
 **Cause**: Plugin install state stuck (Claude Code bug observed during Phase 0 spike).
 
 **Fix**:
+
 ```
 /plugin uninstall <name>
 /reload-plugins
@@ -551,7 +617,8 @@ If still stuck, restart Claude Code and try again.
 **Cause**: Jina can't bypass cookie-walled login pages.
 
 **This is expected behavior in v0.0.x.** The command will enter HITL mode:
-> "目标 URL: https://aiqicha.baidu.com/...
+
+> "目标 URL: [https\://aiqicha.baidu.com/](https://aiqicha.baidu.com/)...
 > 此站需登录看股权结构。请你: 在浏览器登录, 打开 URL, 复制内容, 粘贴回来。"
 
 You paste the content. Plugin continues.
@@ -576,14 +643,19 @@ analyst-pro-plugins/                         (this repo)
 │   ├── lib/apply-rules.ts                   (pure transform functions)
 │   ├── build-from-source.ts                 (main entry)
 │   └── build-from-source.test.ts            (47 vitest tests)
-├── analyst-deal/                            (generated; ships to users)
-│   ├── .claude-plugin/plugin.json
+├── analyst-deal/                            (mostly generated; ships to users)
+│   ├── .claude-plugin/plugin.json           (version 0.0.2)
 │   ├── .mcp.json                            (codex only)
 │   ├── README.md, CLAUDE.md
-│   ├── commands/<4 .md files>               (markdown + YAML frontmatter)
-│   └── knowledge/<6 .md files>              (markdown reference docs)
-├── analyst-dd/                              (generated)
+│   ├── commands/<5 .md files>               (4 transformer-generated + portfolio-tracking hand-written)
+│   ├── agents/<2 .md files>                 (financial-analyzer + competitor-enricher; for portfolio-tracking)
+│   └── knowledge/<13 .md files>             (10 transformer-generated + 3 hand-written for portfolio-tracking)
+├── analyst-dd/                              (generated; interview-notes-enricher hand-written after TODO-1)
+│   ├── .claude-plugin/plugin.json           (version 0.0.1)
+│   └── ...
 └── analyst-research/                        (generated)
+    ├── .claude-plugin/plugin.json           (version 0.0.1)
+    └── ...
 ```
 
 Source of truth: `../analyst-pro/electron/skills/<name>/SKILL.md` + `../analyst-pro/electron/agents/definitions/<name>.ts` (the parent AnalystPro Electron app's repo).
@@ -602,6 +674,7 @@ Contributions welcome! Workflow:
    - Improving plugin metadata (description, README) → edit the relevant `.claude-plugin/plugin.json` or `README.md` directly.
 
 2. **Run tests + build**:
+
    ```bash
    npm test                      # 47 unit tests must pass
    npm run build:plugins:check   # dry-run shows what would change
@@ -609,13 +682,16 @@ Contributions welcome! Workflow:
    ```
 
 3. **Verify**: install the affected plugin from your local working copy:
+
    ```
    /plugin marketplace add ./relative/path/to/analyst-pro-plugins
    /plugin install analyst-deal@analyst-pro-marketplace
    ```
+
    Test the changed command end-to-end.
 
 4. **Commit + PR**:
+
    ```bash
    git add -A
    git commit -m "feat(analyst-deal): ..."
@@ -628,8 +704,10 @@ For larger changes, please open an issue first describing the problem you're sol
 
 ## Status
 
-- **v0.0.1** (2026-05-05) — initial scaffold + transformer + 8 commands generated. **Pre-release; not yet pushed to public GitHub.**
-- **v0.1.0 (next)** — Phase 1 polish: 4 manual TODOs (see [TODOs.md](../../TODOs.md)) closed, knowledge sensitivity audit complete, per-plugin READMEs expanded.
-- **v0.2.0 (later)** — Optional Playwright fallback for anti-bot sites.
+- **Marketplace v0.1.0** (2026-05-05, [released](https://github.com/anzchy/analyst-pro-plugins)) — Phase 1 polish: initial scaffold + transformer + 8 commands generated, 4 manual TODOs closed (TODO-1 generalized `interview-notes-enricher`, TODO-2 distilled `cn-data-sources.md`, TODO-3 expanded per-plugin READMEs, TODO-4 knowledge sensitivity audit verdict READY FOR PUBLIC).
+- **`analyst-deal`**** v0.0.2** (2026-05-06, [PR #4](https://github.com/anzchy/analyst-pro-plugins/pull/4) — closes [#1](https://github.com/anzchy/analyst-pro-plugins/issues/1)) — added `/analyst-deal:portfolio-tracking` skill with 2 sub-agents (`financial-analyzer`, `competitor-enricher`) + 3 knowledge files. First sub-agents to ship in this marketplace. Other plugins (`analyst-dd`, `analyst-research`) remain at 0.0.1.
+- **v0.2.0 (planned)** — opt-in Playwright fallback for anti-bot Chinese sites; possible npm packaging of the marketplace; possible plugin consolidation to a single plugin if maintenance pain emerges.
 
-See `docs/PLAN.md` for the complete design doc + Phase 0 spike findings.
+Open issues: [#2 — feat: 基于矽睿建议书完善深度分析报告模板](https://github.com/anzchy/analyst-pro-plugins/issues/2) (next deal-analysis template upgrade).
+
+See `docs/PLAN.md` for the complete design doc + Phase 0 spike findings, and `docs/designs/` for per-issue design docs.

@@ -45,7 +45,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Top-level `README.md` — repo overview + install path
   - Per-plugin READMEs — self-contained install + setup + per-command usage + troubleshooting + output paths (TODO-3)
   - `docs/PLAN.md` — full design rationale, Phase 0 spike findings, architectural decisions
-  - `docs/guide/USAGE.md` — comprehensive end-user + maintainer guide (635 lines)
+  - `docs/guide/analyst-pro-user-guide.md` (formerly `USAGE.md`) — comprehensive end-user + maintainer guide
   - `knowledge-audit.md` — sensitivity audit verdict per knowledge file (TODO-4)
   - `TODOs.md` — open items tracker (Phase 1 closed, Phase 2+ candidates listed)
 
