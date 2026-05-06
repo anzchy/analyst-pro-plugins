@@ -124,6 +124,8 @@ Required inputs:
 - 合并报表 PDF/xlsx (current period; optional 1-3 历史 periods for year-over-year)
 - Optional: previous tracking report (auto-inherits Section 二 historical equity changes), board materials, interview notes, news clippings
 
+**Default input directory**: `./workspace/state/portfolio/<slug>/`. The command auto-scans this directory at Step 3 for filename patterns matching each material type (`*合并报表*.pdf` / `*财务报表*.pdf` / `*投后跟进报告*.md` / `*董事会*.md` / `*访谈*.md` / `*新闻*.md` etc.) and presents the auto-detected paths via `AskUserQuestion` with two options: **A) Use auto-detected (recommended)** or **B) Override with custom paths**. Drop your quarterly materials into that directory before running and you skip all path-typing.
+
 Output: `./workspace/state/portfolio/<slug>/<YYYYQX>_post_investment_tracking.md`.
 
 **Hard guarantees**:
