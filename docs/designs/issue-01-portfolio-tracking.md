@@ -61,19 +61,29 @@ User: /analyst-deal:portfolio-tracking 矽昌通信 2025Q4
   ├─► [Step 3 — 章节三(一) 经营情况]
   │       读 ./workspace/state/{slug}/ 下的董事会材料 / 访谈 / 季报，按模板写经营段落
   │
+  ├─► [Step 3.5 — 骨架写盘] Write 主报告 `$REPORT_PATH`，章节一/二/三(一) 实填，
+  │       章节三(二)/四/五 留显式占位锚点（FINANCIAL_PLACEHOLDER /
+  │       COMPETITORS_BEGIN…END / SECTION_5_PLACEHOLDER）
+  │
   ├─► [Step 4 — 章节三(二) 财务情况] ─► dispatch financial-analyzer agent
   │       Agent 输入：合并报表 PDF 路径 + 历史 4 年数据（如有）
   │       Agent 输出：填充好的三表 markdown + 比率表 + 文字解读（~2k tokens）
+  │       返回后立即 Edit 替换 FINANCIAL_PLACEHOLDER；主 Agent 仅留 1 句摘要
   │
   ├─► [Step 5 — 章节四 竞争对手] AskUserQuestion 收竞对名单（默认从上期继承）
   │       │
-  │       └─► 并行 dispatch N × competitor-enricher agent（同一 message 多个 Agent tool call）
-  │             每个 Agent 输入：竞对名 + 项目背景（行业 / 主产品）
+  │       └─► 分批并发 dispatch N × competitor-enricher agent（每批 ≤ 4 家）
+  │             每个 Agent 输入：竞对名 + 编号 + 项目背景（行业 / 主产品）
   │             每个 Agent 输出：竞对档案块（~500 tokens，符合 schema）
+  │             每家返回后 → Write 缓存 ./competitors/{NN}_{name}.md + Edit 追加主报告
+  │             → 主 Agent 丢弃 card 全文，仅保留 {N: name, summary} 供 Step 6 引用
+  │             重跑保护：缓存文件已存在则 Read 它，跳过 enricher dispatch
   │
-  ├─► [Step 6 — 章节五 小结] 综合前文，列出风险点 + 下季度跟进事项（LLM 主写）
+  ├─► [Step 6 — 章节五 小结] Read `$REPORT_PATH` 拿前 4 章节内容，
+  │       生成小结后 Edit 替换 SECTION_5_PLACEHOLDER（不保留全文于内存）
   │
-  └─► [Step 7 — 输出] 拼装完整报告到 ./workspace/state/portfolio/{slug}/{YYYYQX}_post_investment_tracking.md
+  └─► [Step 7 — 终检] Read `$REPORT_PATH`，grep 残留占位锚点 / 检查章节顺序与
+        竞对编号连续性；任一失败列入用户摘要，**不**自动修复
 ```
 
 ## 5. Component specs
@@ -94,10 +104,11 @@ allowed-tools: Read, Write, Edit, Grep, Glob, AskUserQuestion, Bash(jina:*), Age
 2. Step 0 — Parameter Collection（公司名、季度、合并报表路径、上期报告路径）
 3. Inheritance — 解析上期报告 / 默认章节一/二骨架
 4. Operations narrative — 内联完成（章节三(一)）
-5. Financial dispatch — 调用 `financial-analyzer` agent
-6. Competitor dispatch — AskUserQuestion 收名单 → 并行调用 N 个 `competitor-enricher`
-7. Summary section — 内联完成（章节五）
-8. Assembly + write
+5. Initial skeleton write — 写章节一/二/三(一) + 占位锚点到 `$REPORT_PATH`
+6. Financial dispatch — 调用 `financial-analyzer` agent → 返回后 Edit 替换 FINANCIAL_PLACEHOLDER
+7. Competitor dispatch — AskUserQuestion 收名单 → 分批并发 ≤4 家 `competitor-enricher`；每家返回 → Write `competitors/{NN}_{name}.md` 缓存 + Edit 追加主报告 + 释放内存
+8. Summary section — Read 主报告 → 生成章节五 → Edit 替换 SECTION_5_PLACEHOLDER
+9. Finalize & verify — grep 残留占位 / 章节顺序 / 编号连续性，输出摘要
 
 ### 5.2 Sub-agent: `agents/financial-analyzer.md`
 

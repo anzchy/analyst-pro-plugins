@@ -18,6 +18,8 @@ Sub-agent specialized for the 财务情况 section of `/analyst-deal:portfolio-t
   - ...                       # 1-4 期；按时间从早到晚或晚到早均可，agent 自行排序
 公司名: <被投公司全名>
 报告期: <YYYYQX，如 2025Q4>   # 用于章节标题
+当期报告期日期: <YYYY-MM-DD>   # 由 parent 从 报告期 推导，传入避免歧义
+YAML 输出路径: <绝对或相对路径>  # parent 指定的侧文件路径，agent 必须写入此处
 ```
 
 ## Hard rules (非协商)
@@ -165,6 +167,35 @@ Read ${CLAUDE_PLUGIN_ROOT}/knowledge/financial_ratios.md
 - ...
 ````
 
+### Step 4.5 — Emit structured YAML side file (供 parent 同步历年 xlsx)
+
+在返回 markdown 之外，**额外**把**当期**（即 Inputs 里 `当期报告期日期` 对应那一期）的全部已抽取线项写入 `YAML 输出路径` 指定的文件。仅本期一列；历史期不写。
+
+```bash
+# 用 python3 写出 YAML，避免编码 / 特殊字符问题
+python3 - <<'PY'
+import yaml
+data = { ... }   # agent 内部结构化数据中本期那一列
+with open("{{YAML 输出路径}}", "w", encoding="utf-8") as f:
+    f.write(f"# current_quarter_financials.yml\n")
+    f.write(f"# 公司: {{公司名}}\n")
+    f.write(f"# 季度: {{报告期}}\n")
+    f.write(f"# 报告期日期: {{当期报告期日期}}\n")
+    f.write(f"# 单位: 万元\n")
+    yaml.safe_dump(data, f, allow_unicode=True, sort_keys=False)
+PY
+```
+
+**Schema 要求（硬约束）**：
+
+- key 必须**逐字**使用合并报表行项原文（如 `货币资金`、`应收账款净额`、`一、营业总收入`），含中文标点、括号、"："、罗马数字、阿拉伯数字编号等，全部 1:1 保留——parent 用精确字符串匹配历年 xlsx 的 A 列标签，任何差异都会导致写不入。
+- value 单位**统一万元**，浮点数保留 2 位小数；与 markdown 中的同期数字必须**完全一致**。
+- 当期某行无法从合并报表定位 → 写 `null`（不要省略行也不要写空字符串）。Parent 在历年 xlsx 写入时会跳过 null 单元格。
+- **包含**所有抽取行：detail 行 + 小计行（流动资产合计 等）+ 比率行（毛利率 等）。Parent 自行决定是否写入小计/比率到 xlsx；agent 不做过滤。
+- **覆盖式写入**（每次调用都写最新一份），不追加。
+
+YAML 写入失败（路径不可写、磁盘空间等）→ agent abort 并返回错误，**不**继续返回 markdown——这样 parent 不会以为 YAML 已就绪而进入 Step 5.5。
+
 ## Failure modes
 
 | 情况 | 处理 |
@@ -177,11 +208,11 @@ Read ${CLAUDE_PLUGIN_ROOT}/knowledge/financial_ratios.md
 
 ## Output contract
 
-返回给 parent command 的内容：**仅** Step 4 生成的 markdown 段（从 `### （二）财务情况` 开始到「数据缺口」段结束），不带任何其他说明、不带 frontmatter、不带 ``` 围栏。
+**返回值**（写到 stdout / agent return）：**仅** Step 4 生成的 markdown 段（从 `### （二）财务情况` 开始到「数据缺口」段结束），不带任何其他说明、不带 frontmatter、不带 ``` 围栏。Parent command 拿到后将其原样嵌入主报告对应位置。
 
-**长度上限：≤ 2,500 tokens**（约 1,500 字 + 三张表）。如超出，优先压缩三个解读段落，不压缩表格数据。
+**侧效（不在返回值中）**：Step 4.5 写出的 `current_quarter_financials.yml`（路径由 parent 在 Inputs.YAML 输出路径 指定）。Parent 在 Step 5.5 自行 Read 该文件用于历年 xlsx 同步。
 
-Parent command 拿到后将其原样嵌入主报告对应位置。
+**长度上限**：返回值 ≤ 2,500 tokens（约 1,500 字 + 三张表）。如超出，优先压缩三个解读段落，不压缩表格数据。YAML 侧文件不计入此上限。
 
 ## Evidence ledger（附录，跟随 markdown 段一起返回）
 
