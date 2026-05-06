@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.0.2] - 2026-05-06
+
+### Added (`analyst-deal` only — other plugins unchanged at 0.0.1)
+
+- **`/analyst-deal:portfolio-tracking [公司名] [季度]`** — quarterly post-investment tracking report generator (issue [#1](https://github.com/anzchy/analyst-pro-plugins/issues/1)). Orchestrates two new sub-agents:
+  - `analyst-deal/agents/financial-analyzer.md` — extracts 三表 from 合并报表, normalizes to 万元, computes 5 financial ratios. Hard rule: numbers must be traceable to source line items; LLM does not generate numbers. Output capped at ≤2,500 tokens; includes Evidence Ledger for audit.
+  - `analyst-deal/agents/competitor-enricher.md` — researches one competitor via Jina (≤8 calls each), outputs a structured card. Multiple instances dispatched in parallel for the competitor list. Output capped at ≤800 tokens. Tools restricted to `Bash, Read, Glob` (no `WebFetch`) per the plugin's jina-only web-access policy.
+- Three new knowledge files supporting the above:
+  - `analyst-deal/knowledge/portfolio_tracking_template.md` — 5-section report skeleton (mirrors field-tested format)
+  - `analyst-deal/knowledge/financial_ratios.md` — ratio formulas as constants (毛利率 / 销售费用率 / 管理费用率 / 研发费用率 / 财务费用率), unit conversion rules, audit guarantees
+  - `analyst-deal/knowledge/competitor_card_schema.md` — output schema for competitor-enricher with synthetic worked sample (all data fabricated; for shape reference only)
+- Per-company persistent state files reused across quarters: `./workspace/state/portfolio/<slug>/project_baseline.yml` (investment terms) and `competitors.yml` (editable competitor list).
+- **Auto-detect inputs in Step 3**: command scans `./workspace/state/portfolio/<slug>/` for filename patterns matching 合并报表 / 上期投后报告 / 董事会材料 / 访谈纪要 / 新闻 and presents AskUserQuestion with `A) Use auto-detected (recommended)` / `B) Override with custom paths`. Drop quarterly materials into the project directory and the command needs zero path-typing. Mirrors the auto-detect pattern from `analyst-dd:interview-notes-enricher`.
+- Design doc at `docs/designs/issue-01-portfolio-tracking.md` capturing premises (P1–P6), architecture (Approach B with two sub-agents), and locked decisions on the four open questions.
+- Prompt-injection guards added to the new command and both sub-agents — external content (PDFs, prior reports, fetched competitor pages) is treated as untrusted data, never instructions.
+- Manifest version bumped: `analyst-deal/.claude-plugin/plugin.json` and `.claude-plugin/marketplace.json` analyst-deal entry both `0.0.1` → `0.0.2` (patch bump — additive scope on a pre-1.0 plugin). Other plugins (`analyst-dd`, `analyst-research`) remain at `0.0.1`.
+
 ## [0.1.0] - 2026-05-05
 
 ### Added
