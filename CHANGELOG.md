@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.1] - 2026-05-09
+
+### Added
+
+- **`/analyst-deal:competitor-enricher <公司1>[, <公司2>, …] [--out <目录>]`** — standalone slash command wrapping the existing `competitor-enricher` sub-agent so analysts can run ad-hoc competitive scans without invoking the full `/portfolio-tracking` 5-section quarterly report. Accepts space- or comma-separated company names; each card writes to a user-chosen folder (default cwd) as `{NN}_{name-slug}.md`. Cards stay schema-compatible with `/portfolio-tracking`'s `competitors/` cache so they can be reused as input to a quarterly report later.
+  - Interactive flow: D0b output directory → D1 project context (A 对比模式 / B 纯客观模式) → D2 plan confirmation with Jina budget回显 → batched parallel dispatch (≤ 4 per batch) → immediate per-card disk write so partial results survive interruption.
+  - Sub-agent description relaxed: `analyst-deal/agents/competitor-enricher.md` no longer restricted to internal `/portfolio-tracking` invocation; same hard rules (zero fabrication, ≥ `YYYY-MM` time precision, conflict两列, no subjective判断, jina-only) apply on both code paths.
+- **Incremental write + xlsx sync** for `/analyst-deal:portfolio-tracking` (commit `66f60d3`):
+  - Step 4.4 establishes a skeleton + placeholder anchors in `$REPORT_PATH` so Step 5/6/7 each Edit-into-place after their work, keeping main-context token usage bounded.
+  - Step 5.5 syncs `current_quarter_financials.yml` into `*历年财务报表*.xlsx` via `openpyxl`, dynamically locating the insertion column from row-1 datetime cells (works for any quarter end). Idempotent on rerun; hard-fails on Excel lock files instead of silently corrupting state.
+
+### Documentation
+
+- `docs/guide/analyst-pro-user-guide.md` updated for the new command: command-table row, Quick Start example, full Per-command section with classic examples, output-filename layout, and bridging notes back to `/portfolio-tracking`.
+
+---
+
 ## [0.0.2] - 2026-05-06
 
 ### Added (`analyst-deal` only — other plugins unchanged at 0.0.1)
@@ -60,5 +77,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Knowledge sensitivity audit (TODO-4) verified all 16 unique knowledge files contain zero LP names, fund-level data, cap-table specifics, real portfolio company names paired with internal judgments, paid database摘录, or personal info. Repo is structurally clean for public release.
 - Repository remains **private** at v0.1.0 release; visibility flip is the maintainer's call.
 
-[Unreleased]: https://github.com/anzchy/analyst-pro-plugins/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/anzchy/analyst-pro-plugins/compare/v0.1.1...HEAD
+[0.1.1]: https://github.com/anzchy/analyst-pro-plugins/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/anzchy/analyst-pro-plugins/releases/tag/v0.1.0
