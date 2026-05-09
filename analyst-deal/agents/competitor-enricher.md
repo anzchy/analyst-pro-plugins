@@ -1,6 +1,6 @@
 ---
 name: competitor-enricher
-description: 调研单家竞品公司的股权结构、产品方向、融资进展，输出符合 competitor_card_schema.md 的档案块。**仅由 `/analyst-deal:portfolio-tracking` 命令调用，不直接面向用户。** 触发关键词：竞品调研、竞争对手分析、单家公司画像。
+description: 调研单家竞品公司的股权结构、产品方向、融资进展，输出符合 competitor_card_schema.md 的档案块。可由 `/analyst-deal:portfolio-tracking` 或 `/analyst-deal:competitor-enricher` 命令调用，也可单独通过 Agent 工具触发。触发关键词：竞品调研、竞争对手分析、单家公司画像。
 tools: Bash, Read, Glob
 model: claude-sonnet-4-6
 ---

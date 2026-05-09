@@ -29,7 +29,7 @@ Three independent Claude Code plugins for VC investment workflows. Each plugin's
 
 | Plugin                 | Commands                                                                                                                                                | Typical use                                                                                              |
 | ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------- |
-| **`analyst-deal`**     | `/analyst-deal:deal-analysis`, `/analyst-deal:memo`, `/analyst-deal:codex-polish-report`, `/analyst-deal:news-scan`, `/analyst-deal:portfolio-tracking` | Project triage → analysis → IC memo synthesis, market intel scanning, quarterly post-investment tracking |
+| **`analyst-deal`**     | `/analyst-deal:deal-analysis`, `/analyst-deal:memo`, `/analyst-deal:codex-polish-report`, `/analyst-deal:news-scan`, `/analyst-deal:portfolio-tracking`, `/analyst-deal:competitor-enricher` | Project triage → analysis → IC memo synthesis, market intel scanning, quarterly post-investment tracking, standalone competitor profiling |
 | **`analyst-dd`**       | `/analyst-dd:tech-dd`, `/analyst-dd:interview-notes-enricher`                                                                                           | Hard-tech due diligence + interview-notes synthesis                                                      |
 | **`analyst-research`** | `/analyst-research:industry-research`, `/analyst-research:enrich-report`                                                                                | Industry research + report enrichment from interview notes                                               |
 
@@ -72,6 +72,7 @@ Restart Claude Code (so it picks up the new env var). Then use:
 ```
 /analyst-deal:deal-analysis 某半导体公司
 /analyst-deal:portfolio-tracking 某被投公司 2026Q1
+/analyst-deal:competitor-enricher 至成微 朗力 速通智联
 /analyst-dd:tech-dd 某半导体公司
 /analyst-research:industry-research 半导体先进封装
 ```
@@ -80,7 +81,7 @@ Restart Claude Code (so it picks up the new env var). Then use:
 
 ## Repo strategy: 1 repo vs 3
 
-**Decision: 1 GitHub repo (********`anzchy/analyst-pro-plugins`********\*\*\*\*) hosts all 3 plugins as subdirectories.**
+**Decision: 1 GitHub repo (********`anzchy/analyst-pro-plugins`********\*\*\*\*\*\*\*\*\*\*\*\*\*\*\*\*\*\*\*\*) hosts all 3 plugins as subdirectories.**
 
 ### Why 1 repo (recommended)
 
@@ -395,6 +396,62 @@ Output: `./workspace/state/portfolio/<slug>/<YYYYQX>_post_investment_tracking.md
 
 See [`docs/designs/issue-01-portfolio-tracking.md`](../designs/issue-01-portfolio-tracking.md) for the full design doc with premises (P1–P6), architecture rationale, and locked decisions.
 
+### `/analyst-deal:competitor-enricher <公司1>[, <公司2>, …] [--out <目录>]`
+
+Standalone wrapper around the same `competitor-enricher` sub-agent that `/analyst-deal:portfolio-tracking` uses internally — but invocable on its own when you only want competitor profiles, without dragging the full 5-section quarterly report along. Each company gets one Jina-budgeted research pass (≤ 8 calls per company) and lands as an independent markdown card matching `knowledge/competitor_card_schema.md` (股权结构 / 产品方向 / 融资进展 / Evidence URLs).
+
+**When to use this vs. `/portfolio-tracking`**:
+
+| Scenario                                                              | Use                                  |
+| --------------------------------------------------------------------- | ------------------------------------ |
+| Quarterly post-investment report for an existing portfolio company    | `/analyst-deal:portfolio-tracking`   |
+| One-off competitive landscape scan (new deal, market sizing, ad-hoc)  | `/analyst-deal:competitor-enricher`  |
+| Pre-investment DD where you only need 3–5 competitor cards            | `/analyst-deal:competitor-enricher`  |
+| Building a watchlist file outside the `./workspace/state/portfolio/` tree | `/analyst-deal:competitor-enricher`  |
+
+**Classic examples**:
+
+```
+# 1. Three competitors, default output to ./
+/analyst-deal:competitor-enricher 至成微 朗力 速通智联
+
+# 2. Comma-separated names with custom output dir
+/analyst-deal:competitor-enricher 至成微, 朗力半导体, 速通智联 --out ./workspace/competitors/2026-05/
+
+# 3. Single competitor (e.g., quick check on a newly-spotted player)
+/analyst-deal:competitor-enricher 寒武纪
+```
+
+**Interactive flow** (after `$ARGUMENTS` is parsed):
+
+1. **D0b — output directory**: confirm default `./` or pick a custom path. The default writes cards directly to your current working directory root, matching the most common ad-hoc use.
+2. **D1 — project context**: choose between
+   - **A) 录入本公司信息（recommended for对比调研）** — collects 本公司名 / 所属行业 / 主产品 / 差异点提示 so each card writes a "与本公司差异点" sentence anchored to your company.
+   - **B) 跳过，纯客观调研模式** — skips the differentiator sentence; cards become neutral profiles. Use when you have no incumbent comparison (e.g., scoping a brand-new sector).
+3. **D2 — plan confirmation**: shows the parsed company list, output dir, project context, and total Jina budget (`8 × N`) before any web call fires.
+4. **Step 3 dispatch**: runs sub-agents in batches of ≤ 4 in parallel; each card writes to disk immediately (`{NN}_{name-slug}.md`) so partial results survive interruption.
+
+**Output filenames** are zero-padded by dispatch order:
+
+```
+./workspace/competitors/2026-05/
+├── 01_至成微.md
+├── 02_朗力半导体.md
+└── 03_速通智联.md
+```
+
+If a target file already exists, the new card writes to `{NN}_{name-slug}-{ISO timestamp}.md` instead of overwriting.
+
+**Bridging back to portfolio-tracking**: cards produced here use the **same schema** as those generated inside `/portfolio-tracking`. To reuse them in a quarterly report, copy them into `./workspace/state/portfolio/<slug>/competitors/` with the `{NN}_{name-slug}.md` naming convention — the parent command's Step 6.2 will detect the cache and skip re-research for those competitors.
+
+**Hard guarantees** (inherited from the sub-agent):
+
+- Every持股 / 融资数字 has a source URL or is explicitly marked `未公开` / `数据缺口` — no fabrication
+- Time precision ≥ `YYYY-MM`; words like "近期/目前/最近" are forbidden
+- Conflicting source data is listed side-by-side with each source noted
+- Subjective judgments ("威胁较大") are excluded — those belong to your downstream synthesis
+- jina-only web policy enforced (sub-agent has no `WebFetch` tool)
+
 ### `/analyst-dd:tech-dd [公司名]`
 
 Hard-tech due diligence — paper/patent search, technical feasibility checklist, expert-interview support, contradiction marking, export-control screening.
@@ -468,7 +525,7 @@ When the maintainer pushes an update, end users do:
 
 Notes:
 
-- Re-install **does NOT touch your ************`./workspace/`************ files**. Reports, evidence, and inbox files are yours.
+- Re-install **does NOT touch your ****************************`./workspace/`**************************** files**. Reports, evidence, and inbox files are yours.
 - The plugin's `~/.claude/plugins/<name>/` directory gets overwritten with the new version.
 - If a command's `allowed-tools` field changed, Claude Code may prompt you for permission on first run after update.
 
@@ -502,7 +559,7 @@ What gets removed:
 
 What stays:
 
-- **Your ************`./workspace/`************ directory** — reports, evidence, inboxes
+- **Your ****************************`./workspace/`**************************** directory** — reports, evidence, inboxes
 - **`JINA_API_KEY`**\*\* env var\*\* — if you want to fully clean up, also unset it from `~/.zshrc`
 - Codex CLI install — also untouched
 
@@ -705,7 +762,7 @@ For larger changes, please open an issue first describing the problem you're sol
 ## Status
 
 - **Marketplace v0.1.0** (2026-05-05, [released](https://github.com/anzchy/analyst-pro-plugins)) — Phase 1 polish: initial scaffold + transformer + 8 commands generated, 4 manual TODOs closed (TODO-1 generalized `interview-notes-enricher`, TODO-2 distilled `cn-data-sources.md`, TODO-3 expanded per-plugin READMEs, TODO-4 knowledge sensitivity audit verdict READY FOR PUBLIC).
-- **`analyst-deal`**** v0.0.2** (2026-05-06, [PR #4](https://github.com/anzchy/analyst-pro-plugins/pull/4) — closes [#1](https://github.com/anzchy/analyst-pro-plugins/issues/1)) — added `/analyst-deal:portfolio-tracking` skill with 2 sub-agents (`financial-analyzer`, `competitor-enricher`) + 3 knowledge files. First sub-agents to ship in this marketplace. Other plugins (`analyst-dd`, `analyst-research`) remain at 0.0.1.
+- **`analyst-deal`**\*\* v0.0.2\*\* (2026-05-06, [PR #4](https://github.com/anzchy/analyst-pro-plugins/pull/4) — closes [#1](https://github.com/anzchy/analyst-pro-plugins/issues/1)) — added `/analyst-deal:portfolio-tracking` skill with 2 sub-agents (`financial-analyzer`, `competitor-enricher`) + 3 knowledge files. First sub-agents to ship in this marketplace. Other plugins (`analyst-dd`, `analyst-research`) remain at 0.0.1.
 - **v0.2.0 (planned)** — opt-in Playwright fallback for anti-bot Chinese sites; possible npm packaging of the marketplace; possible plugin consolidation to a single plugin if maintenance pain emerges.
 
 Open issues: [#2 — feat: 基于矽睿建议书完善深度分析报告模板](https://github.com/anzchy/analyst-pro-plugins/issues/2) (next deal-analysis template upgrade).
