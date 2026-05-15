@@ -382,12 +382,12 @@ Agent tool 调用，子任务名 `financial-analyzer`，输入：
 公司名: {baseline.公司名}
 报告期: {季度，如 2025Q4}
 当期报告期日期: {5.1 派生的 YYYY-MM-DD}
-YAML 输出路径: ./portfolio/{slug}/current_quarter_financials.yml
+侧文件输出路径: ./portfolio/{slug}/current_quarter_financials.json
 ```
 
 Agent 双重产出：
 - **返回值**：章节三(二) 完整 markdown 段（详见 `agents/financial-analyzer.md`）
-- **侧文件**：把当期结构化数据写到上面 `YAML 输出路径`（agent Step 4.5 负责）
+- **侧文件**：把当期结构化数据写到上面 `侧文件输出路径`（agent Step 4.5 负责，`fin-sidecar/v1` JSON）
 
 ### 5.3 Edit 主报告 + 释放内存
 
@@ -399,11 +399,11 @@ Agent 双重产出：
 
 落盘后**主 Agent 工作内存中只保留** `{financial_done: true}` 标记 + 1 句摘要（如 "营收同比 +18%、毛利率回升至 32%"）供 Step 7 引用；财务段落原文不再持有。
 
-进入 Step 5.5 前**校验 YAML 侧文件确实已写出**：`Bash test -s {YAML 路径} && echo OK || echo MISSING`。MISSING → 跳过 Step 5.5 并在 Output 摘要中提示 financial-analyzer 未履行 YAML 输出契约（不影响主报告）。
+进入 Step 5.5 前**校验 JSON 侧文件确实已写出**：`Bash test -s {侧文件路径} && echo OK || echo MISSING`。MISSING → 跳过 Step 5.5 并在 Output 摘要中提示 financial-analyzer 未履行侧文件输出契约（不影响主报告）。
 
 ## Step 5.5: 同步本季度数据到历年财务报表 xlsx
 
-把 Step 5 写出的 `current_quarter_financials.yml` 增量同步到 `./portfolio/{slug}/*历年财务报表*.xlsx`，保证投后报告引用的历年数据与本季度同步。
+把 Step 5 写出的 `current_quarter_financials.json` 增量同步到 `./portfolio/{slug}/*历年财务报表*.xlsx`，保证投后报告引用的历年数据与本季度同步。
 
 ### 5.5.1 目标 xlsx 检测 + 锁文件保护
 
@@ -426,135 +426,49 @@ fi
 echo "XLSX_TARGET: $XLSX"
 ```
 
-锁文件存在 → 主 Agent **hard-fail Step 5.5 并向用户打印上面的提示**；不静默跳过（用户改了 Excel 没保存，xlsx 状态不一致，再写入会丢数据）。其他已完成 step（4.4、5.1-5.3）成果保留在磁盘，用户关闭 Excel 后重跑命令即可（重跑时 Step 6 的 per-competitor 缓存与 Step 5 的 YAML 侧文件均可复用）。
+锁文件存在 → 主 Agent **hard-fail Step 5.5 并向用户打印上面的提示**；不静默跳过（用户改了 Excel 没保存，xlsx 状态不一致，再写入会丢数据）。其他已完成 step（4.4、5.1-5.3）成果保留在磁盘，用户关闭 Excel 后重跑命令即可（重跑时 Step 6 的 per-competitor 缓存与 Step 5 的 JSON 侧文件均可复用）。
 
-### 5.5.2 增量插入新列 + 写入 detail 行
+### 5.5.2 调共用脚本 `merge_financials.py` 增量并表
 
-在主 Agent 上下文里替换以下 placeholder 后整段 Bash 执行：
+合并算法已抽出到 `${CLAUDE_PLUGIN_ROOT}/scripts/merge_financials.py`，与
+`/analyst-deal:financial-analyzer` **共用同一份实现**（消除 inline Python 复制粘贴）。
+契约见 `docs/designs/fin-sidecar-contract.md`。本步不再内联 Python。
 
-- `{XLSX_PATH}` ← 上一步 `$XLSX`（绝对或相对均可）
-- `{YAML_PATH}` ← `./portfolio/{slug}/current_quarter_financials.yml`
+在主 Agent 上下文里替换 placeholder 后整段 Bash 执行：
+
+- `{XLSX_PATH}` ← 5.5.1 的 `$XLSX`（绝对或相对均可）
+- `{JSON_PATH}` ← `./portfolio/{slug}/current_quarter_financials.json`
 - `{TARGET_DATE}` ← Step 5.1 派生的 `YYYY-MM-DD`
 
 ```bash
-python3 - <<'PY'
-import openpyxl
-from datetime import datetime
-import yaml, sys
-
-XLSX_PATH = "{XLSX_PATH}"
-YAML_PATH = "{YAML_PATH}"
-TARGET = datetime.strptime("{TARGET_DATE}", "%Y-%m-%d")
-
-# 1. Load YAML side file
-with open(YAML_PATH, encoding="utf-8") as f:
-    data = yaml.safe_load(f) or {}
-
-# 2. Open xlsx (data_only=False 保留公式)
-wb = openpyxl.load_workbook(XLSX_PATH, data_only=False)
-SHEET = "三大财务报表"
-if SHEET not in wb.sheetnames:
-    sys.exit(f"FATAL: sheet {SHEET!r} 不存在；现有 sheets={wb.sheetnames}")
-ws = wb[SHEET]
-
-# 3. 在 row 1 找 chronologically latest datetime cell
-latest_col, latest_date = None, None
-for c in range(1, ws.max_column + 1):
-    v = ws.cell(row=1, column=c).value
-    if isinstance(v, datetime):
-        if latest_date is None or v > latest_date:
-            latest_date, latest_col = v, c
-if latest_col is None:
-    sys.exit("FATAL: row 1 中没有任何 datetime cell；无法定位插入位置")
-
-# 4. 决定 insert / overwrite / abort（idempotent + 通用季度）
-if TARGET == latest_date:
-    target_col = latest_col
-    # 清空 row 2..max_row 在 target_col 的旧值，避免历史误写残留
-    for r in range(2, ws.max_row + 1):
-        ws.cell(row=r, column=target_col).value = None
-    print(f"NOTE: TARGET={TARGET.date()} 已存在于第 {target_col} 列，已清空旧值后覆盖（重跑场景）")
-elif TARGET > latest_date:
-    target_col = latest_col + 1
-    ws.insert_cols(target_col)
-    print(f"INSERT: 在第 {target_col} 列处插入新列（原 {latest_col+1}+ 列右移）")
-elif TARGET < latest_date:
-    sys.exit(f"FATAL: TARGET={TARGET.date()} 早于已有最新列 {latest_date.date()}；不会向回写")
-
-# 5. 写入 header (row 1)
-ws.cell(row=1, column=target_col).value = TARGET
-
-# 6. 行分类（用户选项 ii — 小计/derived 行让 Excel 公式或手工补）
-#    分三类：silent_ignore（结构性标签，不计入 missing）/ skip（subtotal/ratio）/ write
-SILENT_IGNORE = {
-    "科目", "项目",                              # 列头
-    "利润表", "现金流量表",                       # sheet 内部分段标签
-    "一、经营活动产生的现金流量：",
-    "二、投资活动产生的现金流量：",
-    "三、筹资活动产生的现金流量：",
-}
-SKIP_EXACT = {
-    # 利润表 derived
-    "毛利", "营业利润", "利润总额", "净利润",
-    # 现金流量表 净额 (= 流入小计 - 流出小计)
-    "经营活动产生的现金流量净额",
-    "投资活动产生的现金流量净额",
-    "筹资活动产生的现金流量净额",
-    # 现金流量表合算行
-    "五、现金及现金等价物净增加额",
-    "六、期末现金及现金等价物余额",
-}
-def classify(label):
-    if label in SILENT_IGNORE:
-        return "ignore"
-    if label.endswith("合计") or label.endswith("小计") or label.endswith("率"):
-        return "skip"
-    if label in SKIP_EXACT:
-        return "skip"
-    return "write"
-
-# 7. 按 A 列原文标签精确匹配，写入 detail 行
-written, skipped, missing = [], [], []
-for r in range(2, ws.max_row + 1):
-    label = ws.cell(row=r, column=1).value
-    if not label or not isinstance(label, str):
-        continue
-    cls = classify(label)
-    if cls == "ignore":
-        continue
-    if cls == "skip":
-        skipped.append((r, label)); continue
-    # cls == "write"
-    if label not in data:
-        missing.append((r, label)); continue
-    val = data[label]
-    if val is None:
-        continue   # YAML 显式留 null → 跳过
-    ws.cell(row=r, column=target_col).value = val
-    written.append((r, label))
-
-# 8. 保存
-wb.save(XLSX_PATH)
-
-# 9. 报告
-def col_letter(c):
-    s = ""
-    while c > 0:
-        c, rem = divmod(c-1, 26)
-        s = chr(65+rem) + s
-    return s
-
-print(f"OK: {XLSX_PATH} 已更新")
-print(f"  新列 {col_letter(target_col)} (idx={target_col}) = {TARGET.date()}")
-print(f"  written(detail/non-subtotal) = {len(written)}")
-print(f"  skipped(subtotal/ratio—需手工补或改 SUM 公式) = {len(skipped)}")
-print(f"  missing(label 在 xlsx 但不在 YAML，可能 financial-analyzer 标签 drift) = {len(missing)}")
-if missing:
-    print("  Missing labels:")
-    for r, lbl in missing:
-        print(f"    A{r}: {lbl!r}")
-PY
+# merge_financials.py 依赖 openpyxl（仅 web-scrape conda 环境有；见 analyst-deal/CLAUDE.md）
+source "$(conda info --base)/etc/profile.d/conda.sh" && conda activate web-scrape
+python3 "${CLAUDE_PLUGIN_ROOT}/scripts/merge_financials.py" \
+    --target "{XLSX_PATH}" \
+    --json   "{JSON_PATH}" \
+    --date   "{TARGET_DATE}"
 ```
+
+脚本行为（搬自原 5.5.2，逐字保留 `SILENT_IGNORE` / `SKIP_EXACT` /
+`*合计·小计·率` 分类常量，由 `scripts/test_merge_financials.py` 的 golden
+回归测试守护）：
+
+- 定位 sheet `三大财务报表`，row 1 的 datetime 单元格为期间锚点。
+- **列定位（OV1 —— 相对原算法的唯一行为变化）**：`TARGET` 等于某列 → 清空并
+  覆盖该列（幂等重跑）；`TARGET` 比所有列都新 → 在最新列右侧追加（季度常规
+  路径，**与改造前逐字节一致**，见回归测试 #17）；`TARGET` 早于已有某列 →
+  **按报告期顺序回插**（不再 abort —— 支持补历史期的多 PDF 场景）。
+- 行分类后按 A 列原文精确匹配侧文件 `items` 写 detail 行；小计/比率行留给
+  Excel 公式；label 在表但不在侧文件 → 计入 missing 并在 stdout 列出
+  （label drift，不静默）。
+- 侧文件显式 `null` → 跳过该单元格（不写 `"None"` / 空串 / `0`）。
+- 退出码非 0（缺 sheet / 无 datetime 锚点 / 侧文件损坏 / xlsx 被 Excel
+  占用 等）→ stderr 输出 `ERR:` 或 `FATAL:` 前缀（非 Python traceback）。
+  主 Agent **hard-fail Step 5.5** 并把该行原样打印给用户。
+
+> csv 历年表：脚本同样支持（`--target` 传 `.csv`），语义对齐 xlsx 但 csv
+> 无公式，小计/比率行留空。portfolio-tracking 默认只扫 `*历年财务报表*.xlsx`；
+> csv 路径主要供独立 `/analyst-deal:financial-analyzer` 使用。
 
 ### 5.5.3 Output 透传
 
@@ -562,7 +476,7 @@ PY
 
 ### 5.5.4 通用季度（generalize 到 0630/0930/1231）
 
-5.5.2 的算法**不**依赖列字母 R/S/T 这种硬编码——是按"row 1 中最晚的 datetime 单元格 + 1"动态定位的：
+`merge_financials.py` 的列定位**不**依赖列字母 R/S/T 这种硬编码——按 row 1 的 datetime 单元格动态定位；季度常规路径（TARGET 比所有列都新）就是"最新列 + 1"：
 
 - 跑 2026Q1 → 当前最新是 2025-12-31 (Q列) → 插入到 Q+1=R
 - 跑 2026Q2 → 当前最新是 2026-3-31 (R列，由上一季写入) → 插入到 R+1=S

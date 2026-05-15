@@ -400,6 +400,8 @@ See [`docs/designs/issue-01-portfolio-tracking.md`](../designs/issue-01-portfoli
 
 Standalone wrapper around the same `competitor-enricher` sub-agent that `/analyst-deal:portfolio-tracking` uses internally — but invocable on its own when you only want competitor profiles, without dragging the full 5-section quarterly report along. Each company gets one Jina-budgeted research pass (≤ 8 calls per company) and lands as an independent markdown card matching `knowledge/competitor_card_schema.md` (股权结构 / 产品方向 / 融资进展 / Evidence URLs).
 
+> ⚠️ **This command researches a list you supply — it does NOT discover competitors.** The argument is a list of *known* company names; the command profiles each one in parallel. It will not answer "who are company X's competitors?" on its own. If you don't yet have a competitor list, do a discovery pass first (e.g., a quick `/analyst-deal:news-scan <赛道>` or manual search), then feed the resulting names here. If `$ARGUMENTS` parses to zero company names, the command prompts you for them (D0a) rather than guessing.
+
 **When to use this vs. `/portfolio-tracking`**:
 
 | Scenario                                                              | Use                                  |
@@ -430,6 +432,25 @@ Standalone wrapper around the same `competitor-enricher` sub-agent that `/analys
    - **B) 跳过，纯客观调研模式** — skips the differentiator sentence; cards become neutral profiles. Use when you have no incumbent comparison (e.g., scoping a brand-new sector).
 3. **D2 — plan confirmation**: shows the parsed company list, output dir, project context, and total Jina budget (`8 × N`) before any web call fires.
 4. **Step 3 dispatch**: runs sub-agents in batches of ≤ 4 in parallel; each card writes to disk immediately (`{NN}_{name-slug}.md`) so partial results survive interruption.
+
+**Optimal invocation (worked example — competitors of 矽昌通信)**:
+
+The highest-signal setup pins your incumbent as 本公司 so every card ends with a concrete "与本公司差异点" sentence instead of a neutral profile. Supply full company names (short names like "朗力" trigger a same-name-ambiguity note) and an explicit `--out` so cards are archived rather than dumped into the CWD root:
+
+```
+/analyst-deal:competitor-enricher 瑞昱半导体, 联发科, 乐鑫科技, 泰凌微电子, 翱捷科技 --out ./portfolio/sichang/competitors/
+```
+
+Then answer the two interactive prompts:
+
+- **D1 — project context**: choose **A** and enter:
+  - 本公司名: `矽昌通信`
+  - 所属行业: `Wi-Fi 6/7 路由/网关 AP SoC 芯片`
+  - 主产品: `Wi-Fi AP/家庭网关路由 SoC`
+  - 差异点提示 (optional but sharpens the differentiator sentence): `矽昌从运营商/家庭网关 AP 路由芯片切入`
+- **D2 — plan confirmation**: choose **A** to start (budget shown is `8 × N`).
+
+Writing cards to `./portfolio/sichang/competitors/` also lets a later `/analyst-deal:portfolio-tracking 矽昌通信 <季度>` reuse them via its Step 6.2 cache (it skips re-researching competitors already cached under `./portfolio/<slug>/competitors/`).
 
 **Output filenames** are zero-padded by dispatch order:
 

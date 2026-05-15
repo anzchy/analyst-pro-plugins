@@ -7,8 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **`/analyst-deal:financial-analyzer <target_folder> [--xlsx <历年表>] [--company <名>] [--extract-only]`** — standalone slash command that scans a folder's 财报 PDFs + historical xlsx/csv, dispatches the existing `financial-analyzer` sub-agent once per reporting period (three-statement extraction, 万元 normalization, zero LLM fabrication), and merges each period into the historical table earliest→latest. A lightweight entry point for analysts who only need the PDF numbers folded into Excel/CSV without the full `/portfolio-tracking` 5-section report.
+  - Folder-scoped per-period cache `.fin-cache/<sha8(abs_folder)>/<YYYYMMDD>.json` with an mtime staleness guard (same-name PDFs in different folders never cross-pollute); `--extract-only` short-circuits the merge for analysts who only want the latest period's JSON.
+  - Reporting period parsed from the filename via `datetime.strptime` (illegal dates like `20251331` rejected); ≥2 PDFs resolving to the same period is a hard-stop (`D-COLLIDE`) rather than silently producing half-empty overwriting columns. Per-period failure isolation: one unreadable PDF does not abort the others. Not networked (no jina preflight); HITL — no auto-commit.
+
 ### Changed
 
+- **Financial side-file migrated YAML → stdlib JSON** (`fin-sidecar/v1`). PyYAML is absent from the user's `web-scrape`/base conda envs, so the prior `current_quarter_financials.yml` path was broken in practice. The `financial-analyzer` agent Step 4.5 now emits JSON via `json.dump`; the parent↔agent dispatch field is renamed `YAML 输出路径` → `侧文件输出路径`. Contract frozen at `docs/designs/fin-sidecar-contract.md`.
+- **Extracted shared `analyst-deal/scripts/merge_financials.py`** — `portfolio-tracking` Step 5.5.2's ~150-line inline Python is replaced by a CLI call to this script (eliminating the copy and adding the conda activation it previously lacked). New: csv-target branch (utf-8-sig, in-place), and **insert-in-order column placement** (OV1) replacing the old `TARGET < latest → abort` rule — backfilling an earlier period now inserts the column in date order instead of silently failing; quarterly-append behavior is preserved byte-for-byte (regression-tested). 27 unit tests in `scripts/test_merge_financials.py`, green under `web-scrape`.
 - **Flattened default output paths**: generated reports/evidence now write to shallow per-domain dirs at the working-directory root — `./deals/`, `./portfolio/`, `./intel/`, `./research/` — instead of the legacy nested `./workspace/state/<domain>/`. Deliverables sit ≤2 levels from the project root. `./workspace/inbox/` (user-supplied input materials) is preserved unchanged, since inputs are semantically distinct from outputs.
   - `scripts/translation-rules.ts` `PATH_REPLACEMENTS` rewritten: `workspace/state/` → `./`, bare `state/<domain>/` → `./<domain>/`, `state/intelligence/` → `./intel/`; `workspace/inbox/` and `inbox/` preserved as `./workspace/inbox/`.
   - The `./workspace/` setup preflight (AskUserQuestion to create it) is removed; commands now auto-create the shallow output dir with `mkdir -p` and fall back to read-only mode if the CWD is unwritable.

@@ -4,7 +4,7 @@ Three Claude Code plugins for VC investment workflows, generated from [AnalystPr
 
 | Plugin | Commands | Purpose |
 |---|---|---|
-| **`analyst-deal`** | `deal-analysis`, `memo`, `codex-polish-report`, `news-scan`, `portfolio-tracking` | Project triage → analysis → IC memo synthesis, market intel scanning, quarterly post-investment tracking |
+| **`analyst-deal`** | `deal-analysis`, `memo`, `codex-polish-report`, `news-scan`, `portfolio-tracking`, `competitor-enricher`, `financial-analyzer` | Project triage → analysis → IC memo synthesis, market intel scanning, quarterly post-investment tracking, standalone competitive scans, standalone 财报 extraction + merge |
 | **`analyst-dd`** | `tech-dd`, `interview-notes-enricher` | Hard-tech due diligence + interview-notes synthesis |
 | **`analyst-research`** | `industry-research`, `enrich-report` | Industry research + report enrichment from interview notes |
 
