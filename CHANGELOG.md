@@ -105,6 +105,7 @@ Plugin versions: **`analyst-deal` 0.0.2 → 0.1.0**
 - Knowledge sensitivity audit (TODO-4) verified all 16 unique knowledge files contain zero LP names, fund-level data, cap-table specifics, real portfolio company names paired with internal judgments, paid database摘录, or personal info. Repo is structurally clean for public release.
 - Repository remains **private** at v0.1.0 release; visibility flip is the maintainer's call.
 
-[Unreleased]: https://github.com/anzchy/analyst-pro-plugins/compare/v0.1.1...HEAD
+[Unreleased]: https://github.com/anzchy/analyst-pro-plugins/compare/v0.1.2...HEAD
+[0.1.2]: https://github.com/anzchy/analyst-pro-plugins/compare/v0.1.1...v0.1.2
 [0.1.1]: https://github.com/anzchy/analyst-pro-plugins/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/anzchy/analyst-pro-plugins/releases/tag/v0.1.0
