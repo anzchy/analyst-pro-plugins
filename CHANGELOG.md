@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.2] - 2026-05-15
+
+Plugin versions: **`analyst-deal` 0.0.2 → 0.1.0**
+(plugin.json + marketplace.json — re-synced to a stable multi-command baseline:
+`portfolio-tracking` + `competitor-enricher` + `financial-analyzer`).
+`analyst-dd` / `analyst-research` unchanged at `0.0.1`.
+
 ### Added
 
 - **`/analyst-deal:financial-analyzer <target_folder> [--xlsx <历年表>] [--company <名>] [--extract-only]`** — standalone slash command that scans a folder's 财报 PDFs + historical xlsx/csv, dispatches the existing `financial-analyzer` sub-agent once per reporting period (three-statement extraction, 万元 normalization, zero LLM fabrication), and merges each period into the historical table earliest→latest. A lightweight entry point for analysts who only need the PDF numbers folded into Excel/CSV without the full `/portfolio-tracking` 5-section report.
@@ -16,13 +23,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - **Financial side-file migrated YAML → stdlib JSON** (`fin-sidecar/v1`). PyYAML is absent from the user's `web-scrape`/base conda envs, so the prior `current_quarter_financials.yml` path was broken in practice. The `financial-analyzer` agent Step 4.5 now emits JSON via `json.dump`; the parent↔agent dispatch field is renamed `YAML 输出路径` → `侧文件输出路径`. Contract frozen at `docs/designs/fin-sidecar-contract.md`.
-- **Extracted shared `analyst-deal/scripts/merge_financials.py`** — `portfolio-tracking` Step 5.5.2's ~150-line inline Python is replaced by a CLI call to this script (eliminating the copy and adding the conda activation it previously lacked). New: csv-target branch (utf-8-sig, in-place), and **insert-in-order column placement** (OV1) replacing the old `TARGET < latest → abort` rule — backfilling an earlier period now inserts the column in date order instead of silently failing; quarterly-append behavior is preserved byte-for-byte (regression-tested). 27 unit tests in `scripts/test_merge_financials.py`, green under `web-scrape`.
+- **Extracted shared `analyst-deal/scripts/merge_financials.py`** — `portfolio-tracking` Step 5.5.2's ~150-line inline Python is replaced by a CLI call to this script (eliminating the copy and adding the conda activation it previously lacked). New: csv-target branch (utf-8-sig, in-place), and **insert-in-order column placement** (OV1) replacing the old `TARGET < latest → abort` rule — backfilling an earlier period now inserts the column in date order instead of silently failing; quarterly-append behavior is preserved byte-for-byte (regression-tested). 29 unit tests in `scripts/test_merge_financials.py`, green under `web-scrape`.
 - **Flattened default output paths**: generated reports/evidence now write to shallow per-domain dirs at the working-directory root — `./deals/`, `./portfolio/`, `./intel/`, `./research/` — instead of the legacy nested `./workspace/state/<domain>/`. Deliverables sit ≤2 levels from the project root. `./workspace/inbox/` (user-supplied input materials) is preserved unchanged, since inputs are semantically distinct from outputs.
   - `scripts/translation-rules.ts` `PATH_REPLACEMENTS` rewritten: `workspace/state/` → `./`, bare `state/<domain>/` → `./<domain>/`, `state/intelligence/` → `./intel/`; `workspace/inbox/` and `inbox/` preserved as `./workspace/inbox/`.
   - The `./workspace/` setup preflight (AskUserQuestion to create it) is removed; commands now auto-create the shallow output dir with `mkdir -p` and fall back to read-only mode if the CWD is unwritable.
   - Hand-written commands (`portfolio-tracking.md`, `competitor-enricher.md`) and the 3 plugin-native knowledge files registered in `scripts/plugin-manifest.ts` so `cleanStaleCommands`/`cleanStaleKnowledge` no longer delete them on rebuild (`manual-handwritten` mode).
   - `.gitignore` updated: new `/portfolio/`, `/deals/`, `/intel/`, `/research/` output trees ignored alongside `workspace/`.
   - Docs (READMEs, user guide, per-plugin CLAUDE.md, issue-01 design doc, financial-analyzer plan) updated to the new scheme.
+
+### Fixed
+
+- **F1 — `_meta.period_date` cross-check hardened against agent LLM drift** (surfaced by the plan-step-4 end-to-end smoke test on the real `矽昌通信` PDF). The `financial-analyzer` agent's Step 4.5 template is correct, but the LLM drifted the key to `report_date` (+ stray keys) at runtime; `merge_financials._period_note` then silently skipped the `--date` vs sidecar mismatch NOTE. Now: `report_date` is accepted as a tolerated synonym, and when neither key is present a **visible** NOTE is emitted instead of vanishing silently. Producer contract unchanged; agent Step 4.5 gains a hard `_meta`-keys constraint. Regression-tested (`test_21`/`test_21b`).
 
 ## [0.1.1] - 2026-05-09
 
