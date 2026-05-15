@@ -25,9 +25,14 @@ describe('applyPathReplacements', () => {
     expect(out).toBe('Read ${CLAUDE_PLUGIN_ROOT}/knowledge/tech_checklist.md')
   })
 
-  it('replaces workspace/state/X with ./workspace/state/X', () => {
+  it('drops workspace/state/ wrapper, leaving a shallow domain dir', () => {
     const out = applyPathReplacements('Write workspace/state/deals/foo/report.md')
-    expect(out).toBe('Write ./workspace/state/deals/foo/report.md')
+    expect(out).toBe('Write ./deals/foo/report.md')
+  })
+
+  it('maps workspace/state/portfolio to ./portfolio', () => {
+    const out = applyPathReplacements('Write workspace/state/portfolio/acme/q4.md')
+    expect(out).toBe('Write ./portfolio/acme/q4.md')
   })
 
   it('replaces workspace/inbox/X with ./workspace/inbox/X', () => {
@@ -42,9 +47,14 @@ describe('applyPathReplacements', () => {
     )
   })
 
-  it('replaces bare state/deals/ form with cwd-relative', () => {
+  it('replaces bare state/deals/ form with shallow cwd-relative dir', () => {
     const out = applyPathReplacements('Output: state/deals/techdd/[company]/report.md')
-    expect(out).toBe('Output: ./workspace/state/deals/techdd/[company]/report.md')
+    expect(out).toBe('Output: ./deals/techdd/[company]/report.md')
+  })
+
+  it('maps bare state/intelligence/ to ./intel/', () => {
+    const out = applyPathReplacements('Archive to state/intelligence/news_archive/')
+    expect(out).toBe('Archive to ./intel/news_archive/')
   })
 
   it('handles multiple occurrences in same string', () => {
@@ -52,7 +62,7 @@ describe('applyPathReplacements', () => {
       'Read workspace/knowledge/a.md and workspace/knowledge/b.md, write to workspace/state/deals/x.md'
     const out = applyPathReplacements(input)
     expect(out).toBe(
-      'Read ${CLAUDE_PLUGIN_ROOT}/knowledge/a.md and ${CLAUDE_PLUGIN_ROOT}/knowledge/b.md, write to ./workspace/state/deals/x.md',
+      'Read ${CLAUDE_PLUGIN_ROOT}/knowledge/a.md and ${CLAUDE_PLUGIN_ROOT}/knowledge/b.md, write to ./deals/x.md',
     )
   })
 

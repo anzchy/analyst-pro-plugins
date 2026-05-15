@@ -145,19 +145,19 @@ ${cleansed.trim()}
 // ─── Output Location section ─────────────────────────────────────────────────
 
 function buildOutputLocationSection(pluginName: string, cmdName: string): string {
-  // Conservative default — most commands write under workspace/state/<command-domain>/
+  // Conservative default — most commands write under a shallow ./<command-domain>/
   const domains: Record<string, string> = {
-    'analyst-deal': './workspace/state/deals',
-    'analyst-dd': './workspace/state/deals/techdd',
-    'analyst-research': './workspace/state/research',
+    'analyst-deal': './deals',
+    'analyst-dd': './deals/techdd',
+    'analyst-research': './research',
   }
-  const base = domains[pluginName] ?? './workspace/state'
+  const base = domains[pluginName] ?? '.'
   return `## Output Location
 
 Reports and evidence write to \`${base}/<slug>/\` in the user's current working
-directory. If \`./workspace/\` was created in the preflight, this path is
-relative to it. Use the company/project name as the slug (lowercase,
-hyphen-separated, ASCII transliteration of CJK if applicable).
+directory. The command creates this directory with \`mkdir -p\`; no
+\`./workspace/\` wrapper is required. Use the company/project name as the slug
+(lowercase, hyphen-separated, ASCII transliteration of CJK if applicable).
 `
 }
 

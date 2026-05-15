@@ -33,15 +33,15 @@ Run these checks before Step 1; abort on any failure.
    - On failure → switch to read-only mode (output report content to chat, do not
      write files). Tell the user explicitly that no files will be written.
 
-4. **`./workspace/` directory check**: if `./workspace/` does not exist, ask the
-   user via AskUserQuestion:
-   - A) Create `./workspace/` in current directory (recommended)
-   - B) Specify a different path
-   - C) Skip workspace mode (write reports to `./reports/<slug>/` instead)
+4. **Output directory auto-created**: reports write to a shallow per-domain dir
+   under the current working directory (e.g. `./deals/<slug>/`,
+   `./portfolio/<slug>/`, `./intel/`). The command creates it with
+   `mkdir -p`; no `./workspace/` setup is required. If the CWD is not
+   writable, fall back to read-only mode per check 3.
 
 
 5. **Evidence file required**: this command synthesizes from accumulated evidence.
-   - Verify `./workspace/state/<company-slug>/evidence.md` exists and is non-empty.
+   - Verify `./<company-slug>/evidence.md` exists and is non-empty.
    - If missing or empty → HARD FAIL: "memo command needs prior evidence.
      Run `/analyst-deal:deal-analysis $ARGUMENTS` first to accumulate evidence."
 
@@ -49,7 +49,7 @@ Run these checks before Step 1; abort on any failure.
 ## 执行步骤
 
 1. Read `${CLAUDE_PLUGIN_ROOT}/knowledge/ic_memo_template.md` — 这是 IC Memo 的标准结构模板，必须严格遵循
-2. Read `./workspace/state/$ARGUMENTS-slug/evidence.md` — 这是预编译的证据文件，包含所有已积累的实体和证据条目
+2. Read `./$ARGUMENTS-slug/evidence.md` — 这是预编译的证据文件，包含所有已积累的实体和证据条目
 3. 按照模板结构，逐章节填充证据内容：
    - **投资摘要**: 基于证据中的公司概况 + 得分 + 核心亮点/风险，撰写 3-5 句话的执行摘要
    - **投资逻辑**: 从 thesis 类型实体和高置信度证据提炼投资论点
@@ -63,12 +63,12 @@ Run these checks before Step 1; abort on any failure.
 
 4. **内联引用**: 每个关键主张后标注来源和置信度，格式: `[来源名称, 置信度 0.X]`
 5. **置信度缺口**: 明确列出缺失的重要维度，例如 "⚠ 未找到 TRL 评估数据" "⚠ 无 IP 景观分析"
-6. 将草稿写入 `./workspace/state/$ARGUMENTS-slug/ic_memo_draft.md`
+6. 将草稿写入 `./$ARGUMENTS-slug/ic_memo_draft.md`
 
 ## HITL 审批
 
 草稿生成后，通过 AskUserQuestion 展示备忘录摘要，提供以下选项：
-- "批准并保存" — 备忘录存档到 ./workspace/state/deals/ic_memos/
+- "批准并保存" — 备忘录存档到 ./deals/ic_memos/
 - "需要修改" — 用户提供修改意见，重新生成
 - "放弃草稿" — 不保存
 
@@ -81,8 +81,8 @@ Run these checks before Step 1; abort on any failure.
 
 ## Output Location
 
-Reports and evidence write to `./workspace/state/deals/<slug>/` in the user's current working
-directory. If `./workspace/` was created in the preflight, this path is
-relative to it. Use the company/project name as the slug (lowercase,
-hyphen-separated, ASCII transliteration of CJK if applicable).
+Reports and evidence write to `./deals/<slug>/` in the user's current working
+directory. The command creates this directory with `mkdir -p`; no
+`./workspace/` wrapper is required. Use the company/project name as the slug
+(lowercase, hyphen-separated, ASCII transliteration of CJK if applicable).
 

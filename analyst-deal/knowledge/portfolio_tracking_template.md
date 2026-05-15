@@ -162,7 +162,7 @@ This is the canonical structure for `/analyst-deal:portfolio-tracking` output. M
 |---|---|
 | `{{投前估值}}` `{{投资金额}}` `{{持股比例}}` 等基线字段 | `project_baseline.yml`（首次手工录入，后续季度复用） |
 | `{{当年}}` `{{YYYY 年 QX 季度}}` | 命令参数（`$ARGUMENTS` 中的季度部分） |
-| 经营情况各段 | 主命令读 `./workspace/state/portfolio/{slug}/` 下用户在 Step 3 提供的董事会材料/访谈/季报/新闻路径后内联生成 |
+| 经营情况各段 | 主命令读 `./portfolio/{slug}/` 下用户在 Step 3 提供的董事会材料/访谈/季报/新闻路径后内联生成 |
 | 财务情况整段 | `financial-analyzer` agent 输出，整段嵌入 |
 | 竞争对手整段 | N × `competitor-enricher` agent 输出，按用户指定顺序拼接 |
 | 小结 | 主命令在前文全部就位后内联生成（必须引用前文具体数字与事件，不允许空泛） |

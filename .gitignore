@@ -29,6 +29,13 @@ spike/**/.DS_Store
 # Used locally to anchor design/test work; MUST NOT enter the public repo.
 docs/reference/
 
-# Runtime workspace — generated reports, evidence, baseline state files.
+# Runtime workspace — user-supplied input materials (inbox).
 # Per-developer; never commit.
 workspace/
+
+# Generated report artifacts — shallow per-domain output dirs at repo root.
+# Replaces the legacy workspace/state/ tree; per-developer, never commit.
+/portfolio/
+/deals/
+/intel/
+/research/

@@ -87,7 +87,7 @@ History format spec for tracking IC decisions. Has ONE example using `[公司 A]
 |---|---|
 | 1-7 | Clean (example uses placeholder; user fills with their real history privately) |
 
-**Note**: USERS will populate with real decision history. That data stays in their private workspace (`./workspace/state/...`), NOT in this repo. The template itself is safe to publish.
+**Note**: USERS will populate with real decision history. That data stays in their private per-domain output dirs (`./deals/`, `./portfolio/`, …), NOT in this repo. The template itself is safe to publish.
 
 ---
 

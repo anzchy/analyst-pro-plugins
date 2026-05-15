@@ -69,6 +69,18 @@ export const PLUGIN_MANIFEST: Record<string, PluginDefinition> = {
         agent: 'market-intel',
         transform: 'auto',
       },
+      // Plugin-native, hand-written (no AnalystPro/HOME source). Registered so
+      // cleanStaleCommands keeps them and manual-handwritten preserves edits
+      // across rebuilds. Source path is a self-reference (never read while the
+      // file exists). See each file's header banner.
+      'portfolio-tracking': {
+        source: 'analyst-deal/commands/portfolio-tracking.md',
+        transform: 'manual-handwritten',
+      },
+      'competitor-enricher': {
+        source: 'analyst-deal/commands/competitor-enricher.md',
+        transform: 'manual-handwritten',
+      },
     },
     // Union of all knowledge files referenced by:
     //   - deal-analyst.ts (8 files: bp/dd/ic/past_ic/red/report/tech)
@@ -86,6 +98,13 @@ export const PLUGIN_MANIFEST: Record<string, PluginDefinition> = {
       'tech_checklist.md',
       'triage_rules.md',
       'vc_watchlist.md',
+      // Plugin-native, hand-maintained (no AnalystPro source). Listed so
+      // cleanStaleKnowledge keeps them; copyKnowledge skips (missing src) and
+      // preserves the in-repo copy. Referenced by portfolio-tracking /
+      // competitor-enricher.
+      'competitor_card_schema.md',
+      'financial_ratios.md',
+      'portfolio_tracking_template.md',
     ],
     knowledgeGenerated: [
       {

@@ -111,4 +111,4 @@
 ---
 
 **Status**: DRAFT — 待 IC 讨论 + 合伙人确认
-**HITL**: 此文件归档到 `state/deals/ic_memos/` 前必须获得人工 `approve`
+**HITL**: 此文件归档到 `./deals/ic_memos/` 前必须获得人工 `approve`

@@ -170,7 +170,7 @@ B) 取消
 2. 本次写入的文件清单（按编号顺序），每行：`{NN}_{name-slug}.md  —  {summary}`
 3. 如有家在子 agent 内部触发 `数据缺口` / `jina 不可用` / `公司名歧义` → 显式列出该家及对应失败原因
 4. 是否需要把这些档案聚合进 `/analyst-deal:portfolio-tracking` 的主报告 — 一句提示：
-   "如需把这些档案纳入完整投后报告，可后续运行 `/analyst-deal:portfolio-tracking <公司名> <季度>`，并把生成的 markdown 文件挪到 `./workspace/state/portfolio/{slug}/competitors/` 复用（命名 `{NN}_{name-slug}.md`，主命令会自动跳过已缓存的家）。"
+   "如需把这些档案纳入完整投后报告，可后续运行 `/analyst-deal:portfolio-tracking <公司名> <季度>`，并把生成的 markdown 文件挪到 `./portfolio/{slug}/competitors/` 复用（命名 `{NN}_{name-slug}.md`，主命令会自动跳过已缓存的家）。"
 
 ## Style Contract
 

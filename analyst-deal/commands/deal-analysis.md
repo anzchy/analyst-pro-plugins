@@ -33,11 +33,11 @@ Run these checks before Step 1; abort on any failure.
    - On failure → switch to read-only mode (output report content to chat, do not
      write files). Tell the user explicitly that no files will be written.
 
-4. **`./workspace/` directory check**: if `./workspace/` does not exist, ask the
-   user via AskUserQuestion:
-   - A) Create `./workspace/` in current directory (recommended)
-   - B) Specify a different path
-   - C) Skip workspace mode (write reports to `./reports/<slug>/` instead)
+4. **Output directory auto-created**: reports write to a shallow per-domain dir
+   under the current working directory (e.g. `./deals/<slug>/`,
+   `./portfolio/<slug>/`, `./intel/`). The command creates it with
+   `mkdir -p`; no `./workspace/` setup is required. If the CWD is not
+   writable, fall back to read-only mode per check 3.
 
 ## 执行步骤
 
@@ -50,7 +50,7 @@ Run these checks before Step 1; abort on any failure.
    - 上市数据：若已上市，Run via Bash: `jina read data.eastmoney.com/report/ --json` 获取券商研报摘要；需完整报告时用 ``jina read URL --json`` + `解析 jina read 输出的 markdown content 字段`
 3. 材料缺口标注：若 BP 或交流纪要缺失，不要中途用 AskUserQuestion 中断。直接进入分析阶段，并在基本信息报告的 Evidence Ledger 部分明确标注哪些字段只能依赖公开数据源（如"BP 缺失 — 融资金额仅来自 36kr，无法核对原始 cap-table"）。用户在 Phase 1 → Phase 2 的 HITL gate 上看到完整的证据缺口后再决定是否进入深度分析。
 4. 提取结构化信息：公司概况、团队、产品技术、市场、融资历史、关键指标、红旗
-5. 生成基本信息报告 → `./workspace/state/deals/processing/[company-slug]/YYYYMMDD_[company-slug]_basic_info.md`
+5. 生成基本信息报告 → `./deals/processing/[company-slug]/YYYYMMDD_[company-slug]_basic_info.md`
 6. **Phase 1 筛选评分**：报告生成后，执行证据台账填写 → 硬停止检查 → 6 维度 5-bucket 评分 → 生成 YAML scorecard 附在报告末尾
 
 ### Company Slug 规则
@@ -71,7 +71,7 @@ Run these checks before Step 1; abort on any failure.
 - "Hold" → 保存状态。渲染端的 SmartDefaultOptions 组件会展开一个内联 checkbox "Flag for partner review at next meeting"。
   - 勾选 + Confirm Hold → `selectedLabels: ["Hold|flag=true"]` → `next_action='partner_review'`
   - 不勾选 + Confirm Hold → `selectedLabels: ["Hold"]` → `next_action='pause'`
-- "Reject" → 移至 ./workspace/state/deals/rejected/
+- "Reject" → 移至 ./deals/rejected/
 
 Default option (▶ 高亮 + Enter 确认) 由 weighted_total 驱动:
 - ≥ 75 → Continue
@@ -81,10 +81,10 @@ Default option (▶ 高亮 + Enter 确认) 由 weighted_total 驱动:
 
 ## Output Location
 
-Reports and evidence write to `./workspace/state/deals/<slug>/` in the user's current working
-directory. If `./workspace/` was created in the preflight, this path is
-relative to it. Use the company/project name as the slug (lowercase,
-hyphen-separated, ASCII transliteration of CJK if applicable).
+Reports and evidence write to `./deals/<slug>/` in the user's current working
+directory. The command creates this directory with `mkdir -p`; no
+`./workspace/` wrapper is required. Use the company/project name as the slug
+(lowercase, hyphen-separated, ASCII transliteration of CJK if applicable).
 
 ## Subagent Behavior (inlined from AnalystPro `deal-analyst` agent definition)
 
@@ -159,13 +159,13 @@ When WebFetch returns incomplete data (login walls, anti-bot blocks, truncated c
 - ${CLAUDE_PLUGIN_ROOT}/knowledge/past_ic_decisions.md — Historical IC decisions
 
 **FORBIDDEN during Phase 1 web research:**
-- Do NOT read or Glob ./workspace/state/deals/processing/[slug]/*.md BEFORE completing all mandatory web searches.
-- Existing files in ./workspace/state/deals/processing/ are prior AI-generated outputs, NOT evidence. They may contain stale data, hallucinated claims, or results from runs where web tools were unavailable.
+- Do NOT read or Glob ./deals/processing/[slug]/*.md BEFORE completing all mandatory web searches.
+- Existing files in ./deals/processing/ are prior AI-generated outputs, NOT evidence. They may contain stale data, hallucinated claims, or results from runs where web tools were unavailable.
 - You MUST complete ALL web searches listed in the "Web Research" section FIRST, then write a fresh report from scratch. Never copy or update a prior report — always overwrite with newly gathered evidence.
 
 ## Write Access
 
-- ./workspace/state/deals/ — All subdirectories (processing/, archived/, rejected/)
+- ./deals/ — All subdirectories (processing/, archived/, rejected/)
 
 ---
 
@@ -194,7 +194,7 @@ Check whether any of these materials exist:
 
 Even when BP/交流纪要 are available, you MUST conduct web research to verify claims and fill gaps. When materials are missing, web research is the PRIMARY data source.
 
-**CRITICAL**: Do NOT skip web research because a prior report exists in ./workspace/state/deals/processing/. Prior reports are stale AI outputs — they are NOT a substitute for live web research. Always run ALL searches below before writing anything.
+**CRITICAL**: Do NOT skip web research because a prior report exists in ./deals/processing/. Prior reports are stale AI outputs — they are NOT a substitute for live web research. Always run ALL searches below before writing anything.
 
 Run these searches in order using the Search Tools described above:
 1. "{公司名}" — general company info
@@ -228,11 +228,11 @@ Extract and organize the following from all available sources (materials + web r
 
 ### Output
 
-Write the report to: ./workspace/state/deals/processing/[company-slug]/YYYYMMDD_[company-slug]_basic_info.md
+Write the report to: ./deals/processing/[company-slug]/YYYYMMDD_[company-slug]_basic_info.md
 
 Use today's date in YYYYMMDD format.
 Company slug rules: lowercase, hyphens for spaces, no special characters.
-Example: "DeepFusion Energy" → ./workspace/state/deals/processing/deepfusion-energy/20260301_deepfusion-energy_basic_info.md
+Example: "DeepFusion Energy" → ./deals/processing/deepfusion-energy/20260301_deepfusion-energy_basic_info.md
 
 For the report structure, read ${CLAUDE_PLUGIN_ROOT}/knowledge/report_template.md first. If the template file is missing or unreadable, use this minimal fallback structure:
 
@@ -358,7 +358,7 @@ Options (exactly 3, in this order):
   next meeting" checkbox; user confirms with checkbox CHECKED to map to
   next_action='partner_review' (selectedLabels = ["Hold|flag=true"]) or
   UNCHECKED for next_action='pause' (selectedLabels = ["Hold"]).
-- "Reject" — move deal to ./workspace/state/deals/rejected/
+- "Reject" — move deal to ./deals/rejected/
 
 The AskUserQuestion call MUST include these sibling fields on the question
 object so SmartDefaultOptions activates the smart-default UX:
@@ -381,7 +381,7 @@ Skipped on Hold/Reject — those branches end the deal-analyst session at Phase 
    - ${CLAUDE_PLUGIN_ROOT}/knowledge/dd_checklist_template.md
    - ${CLAUDE_PLUGIN_ROOT}/knowledge/dd_question_list_template.md
 2. Read the basic_info report you just wrote at
-   ./workspace/state/deals/processing/{slug}/YYYYMMDD_{slug}_basic_info.md.
+   ./deals/processing/{slug}/YYYYMMDD_{slug}_basic_info.md.
 3. Resolve sector from the deal record's `sector` field; if absent, infer
    from basic_info.md. Multi-sector deals merge relevant section-6 focus.
 4. Customize the **checklist**: assign each item one of the four status levels
@@ -401,10 +401,10 @@ Skipped on Hold/Reject — those branches end the deal-analyst session at Phase 
        ---
 
 7. Write to:
-   - ./workspace/state/deals/processing/{slug}/YYYYMMDD_{slug}_dd_checklist.md
-   - ./workspace/state/deals/processing/{slug}/YYYYMMDD_{slug}_dd_questions.md
+   - ./deals/processing/{slug}/YYYYMMDD_{slug}_dd_checklist.md
+   - ./deals/processing/{slug}/YYYYMMDD_{slug}_dd_questions.md
    The path-enforcer hook adds the YYYYMMDD_{slug}_ prefix automatically if
-   you write a non-dated filename under ./workspace/state/deals/processing/{slug}/.
+   you write a non-dated filename under ./deals/processing/{slug}/.
 
 ### Gate 2 (HITL — 3 options, 1-tap default)
 
@@ -420,7 +420,7 @@ Set `defaultOption: 0` (Send to founder) and DO NOT set `expandHoldWithFlag`.
 #### After the user chooses
 
 - "Send to founder" — write a chat message:
-  "✓ DD checklist + questions saved to ./workspace/state/deals/processing/{slug}/.
+  "✓ DD checklist + questions saved to ./deals/processing/{slug}/.
    Send to founder via your normal channel. When materials arrive, click
    **Materials received → run Phase 2** on the deal card."
   Then update the **dd_questions.md** frontmatter (use Edit) so its
@@ -445,7 +445,7 @@ Set `defaultOption: 0` (Send to founder) and DO NOT set `expandHoldWithFlag`.
 ### What NOT to read in Phase 1.5
 
 DO NOT read ${CLAUDE_PLUGIN_ROOT}/knowledge/bp_framework.md, ${CLAUDE_PLUGIN_ROOT}/knowledge/ic_memo_template.md,
-or any ./workspace/state/deals/processing/{slug}/deep_analysis.md (which doesn't exist
+or any ./deals/processing/{slug}/deep_analysis.md (which doesn't exist
 yet anyway). Phase 2 reads those files; Phase 1.5 stays scoped to Phase 1
 artifacts + the two templates.
 
@@ -457,13 +457,13 @@ artifacts + the two templates.
 
 Business model teardown, valuation analysis, competitor mapping.
 For hard tech sectors (semiconductor, fusion, quantum, etc.), handle technical DD directly.
-Output: ./workspace/state/deals/processing/[company-slug]/deep_analysis.md
+Output: ./deals/processing/[company-slug]/deep_analysis.md
 
 ---
 
 ## Phase 3 — IC Memo Draft [Phase 3 实现]
 
 Investment thesis, risk matrix, valuation recommendation.
-Output: ./workspace/state/deals/processing/[company-slug]/ic_memo_draft.md
+Output: ./deals/processing/[company-slug]/ic_memo_draft.md
 HITL: IC Memo must be approved by user before finalization.
 

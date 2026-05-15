@@ -32,11 +32,11 @@ Run these checks before Step 1; abort on any failure.
    - On failure → switch to read-only mode (output report content to chat, do not
      write files). Tell the user explicitly that no files will be written.
 
-4. **`./workspace/` directory check**: if `./workspace/` does not exist, ask the
-   user via AskUserQuestion:
-   - A) Create `./workspace/` in current directory (recommended)
-   - B) Specify a different path
-   - C) Skip workspace mode (write reports to `./reports/<slug>/` instead)
+4. **Output directory auto-created**: reports write to a shallow per-domain dir
+   under the current working directory (e.g. `./deals/<slug>/`,
+   `./portfolio/<slug>/`, `./intel/`). The command creates it with
+   `mkdir -p`; no `./workspace/` setup is required. If the CWD is not
+   writable, fall back to read-only mode per check 3.
 
 ## 参数
 
@@ -57,11 +57,11 @@ Run these checks before Step 1; abort on any failure.
 
 - **5 (Critical/Urgent)**: 与投资组合或活跃项目直接相关 → 标记为紧急推送
 - **3-4 (Important)**: 目标赛道重大事件、竞争对手动向 → 纳入每日简报
-- **1-2 (Background)**: 一般行业噪音 → 仅归档至 `state/intelligence/news_archive/`
+- **1-2 (Background)**: 一般行业噪音 → 仅归档至 `./intel/news_archive/`
 
 ## 输出格式
 
-报告写入 `state/intelligence/YYYYMMDD_daily_brief.md`（日期前缀防覆盖）。
+报告写入 `./intel/YYYYMMDD_daily_brief.md`（日期前缀防覆盖）。
 
 每条情报使用结构化格式（便于数据库自动入库）：
 
@@ -75,19 +75,19 @@ Run these checks before Step 1; abort on any failure.
 [摘要文本]
 ```
 
-Score 1-2 仅归档至 `state/intelligence/news_archive/`。
+Score 1-2 仅归档至 `./intel/news_archive/`。
 
 ## 数据防火墙
 
-- NO access to `./workspace/state/portfolio/`
+- NO access to `./portfolio/`
 - NO access to `state/lp_reports/`
 
 ## Output Location
 
-Reports and evidence write to `./workspace/state/deals/<slug>/` in the user's current working
-directory. If `./workspace/` was created in the preflight, this path is
-relative to it. Use the company/project name as the slug (lowercase,
-hyphen-separated, ASCII transliteration of CJK if applicable).
+Reports and evidence write to `./deals/<slug>/` in the user's current working
+directory. The command creates this directory with `mkdir -p`; no
+`./workspace/` wrapper is required. Use the company/project name as the slug
+(lowercase, hyphen-separated, ASCII transliteration of CJK if applicable).
 
 ## Subagent Behavior (inlined from AnalystPro `market-intel` agent definition)
 
@@ -114,9 +114,9 @@ Efficient news curator. Objective, no speculation. Score every item by relevance
 
 ## Output Format
 Write results to workspace state files with date-prefixed filenames:
-- Daily brief → state/intelligence/YYYYMMDD_daily_brief.md
-- VC moves → state/intelligence/YYYYMMDD_vc_moves.md
-- Policy alerts → state/intelligence/YYYYMMDD_policy_alerts.md
+- Daily brief → ./intel/YYYYMMDD_daily_brief.md
+- VC moves → ./intel/YYYYMMDD_vc_moves.md
+- Policy alerts → ./intel/YYYYMMDD_policy_alerts.md
 
 Use today's date in YYYYMMDD format (e.g. 20260301).
 
@@ -139,7 +139,7 @@ Read ${CLAUDE_PLUGIN_ROOT}/knowledge/vc_watchlist.md for VC institutions to trac
 Read ${CLAUDE_PLUGIN_ROOT}/knowledge/triage_rules.md for detailed scoring criteria.
 
 ## Constraints
-- NO access to ./workspace/state/portfolio/ or state/lp_reports/ (confidential firewall)
+- NO access to ./portfolio/ or state/lp_reports/ (confidential firewall)
 - Always include source URLs
 - Always include date of information
 - Chinese for analysis, English for technical terms

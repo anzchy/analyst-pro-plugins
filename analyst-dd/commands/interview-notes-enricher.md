@@ -166,6 +166,6 @@ Keep the report brief; the diff is the source of truth.
 
 ## Output Location
 
-This command **edits the user's memo file in place** at the `MEMO_PATH` specified in Step 0. It does NOT write to `./workspace/state/...`. The memo file is the user's, not a plugin artifact.
+This command **edits the user's memo file in place** at the `MEMO_PATH` specified in Step 0. It does NOT write to any per-domain output dir. The memo file is the user's, not a plugin artifact.
 
 If the user wants to preserve the original before edits, ask them to commit it first or save a backup copy outside the command.

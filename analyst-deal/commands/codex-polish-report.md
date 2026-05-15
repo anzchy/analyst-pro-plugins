@@ -37,11 +37,11 @@ Run these checks before Step 1; abort on any failure.
    - On failure → switch to read-only mode (output report content to chat, do not
      write files). Tell the user explicitly that no files will be written.
 
-4. **`./workspace/` directory check**: if `./workspace/` does not exist, ask the
-   user via AskUserQuestion:
-   - A) Create `./workspace/` in current directory (recommended)
-   - B) Specify a different path
-   - C) Skip workspace mode (write reports to `./reports/<slug>/` instead)
+4. **Output directory auto-created**: reports write to a shallow per-domain dir
+   under the current working directory (e.g. `./deals/<slug>/`,
+   `./portfolio/<slug>/`, `./intel/`). The command creates it with
+   `mkdir -p`; no `./workspace/` setup is required. If the CWD is not
+   writable, fall back to read-only mode per check 3.
 
 Before reading any files, check if the `mcp__codex__codex` tool is available to you.
 
@@ -63,12 +63,12 @@ Before reading any files, check if the `mcp__codex__codex` tool is available to 
 
 Search for the deal-DD report for **$ARGUMENTS** in this order:
 
-1. `./workspace/state/deals/processing/$ARGUMENTS/*_basic_info.md` (dated filename, exact slug match)
-2. `./workspace/state/deals/processing/$ARGUMENTS/basic_info.md` (legacy filename, exact slug match)
-3. `./workspace/state/deals/processing/*/*_basic_info.md` (glob search, newest by filename date first)
-4. `./workspace/state/deals/processing/*/basic_info.md` (legacy glob search)
-5. `./workspace/state/deals/techdd/$ARGUMENTS/` (tech DD report directory)
-6. `./workspace/state/deals/techdd/*/` (glob search for company name)
+1. `./deals/processing/$ARGUMENTS/*_basic_info.md` (dated filename, exact slug match)
+2. `./deals/processing/$ARGUMENTS/basic_info.md` (legacy filename, exact slug match)
+3. `./deals/processing/*/*_basic_info.md` (glob search, newest by filename date first)
+4. `./deals/processing/*/basic_info.md` (legacy glob search)
+5. `./deals/techdd/$ARGUMENTS/` (tech DD report directory)
+6. `./deals/techdd/*/` (glob search for company name)
 
 **If multiple matches found**: List all matches and ask the user which report to polish.
 **If no match found**: Tell the user: "No report found for '$ARGUMENTS'. Run `/deal $ARGUMENTS` first to generate a report."
@@ -102,8 +102,8 @@ Ask the user: "Save the polished version? (This will overwrite the original repo
 
 ## Output Location
 
-Reports and evidence write to `./workspace/state/deals/<slug>/` in the user's current working
-directory. If `./workspace/` was created in the preflight, this path is
-relative to it. Use the company/project name as the slug (lowercase,
-hyphen-separated, ASCII transliteration of CJK if applicable).
+Reports and evidence write to `./deals/<slug>/` in the user's current working
+directory. The command creates this directory with `mkdir -p`; no
+`./workspace/` wrapper is required. Use the company/project name as the slug
+(lowercase, hyphen-separated, ASCII transliteration of CJK if applicable).
 

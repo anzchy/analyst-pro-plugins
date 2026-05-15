@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- **Flattened default output paths**: generated reports/evidence now write to shallow per-domain dirs at the working-directory root — `./deals/`, `./portfolio/`, `./intel/`, `./research/` — instead of the legacy nested `./workspace/state/<domain>/`. Deliverables sit ≤2 levels from the project root. `./workspace/inbox/` (user-supplied input materials) is preserved unchanged, since inputs are semantically distinct from outputs.
+  - `scripts/translation-rules.ts` `PATH_REPLACEMENTS` rewritten: `workspace/state/` → `./`, bare `state/<domain>/` → `./<domain>/`, `state/intelligence/` → `./intel/`; `workspace/inbox/` and `inbox/` preserved as `./workspace/inbox/`.
+  - The `./workspace/` setup preflight (AskUserQuestion to create it) is removed; commands now auto-create the shallow output dir with `mkdir -p` and fall back to read-only mode if the CWD is unwritable.
+  - Hand-written commands (`portfolio-tracking.md`, `competitor-enricher.md`) and the 3 plugin-native knowledge files registered in `scripts/plugin-manifest.ts` so `cleanStaleCommands`/`cleanStaleKnowledge` no longer delete them on rebuild (`manual-handwritten` mode).
+  - `.gitignore` updated: new `/portfolio/`, `/deals/`, `/intel/`, `/research/` output trees ignored alongside `workspace/`.
+  - Docs (READMEs, user guide, per-plugin CLAUDE.md, issue-01 design doc, financial-analyzer plan) updated to the new scheme.
+
 ## [0.1.1] - 2026-05-09
 
 ### Added

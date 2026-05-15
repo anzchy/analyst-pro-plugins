@@ -38,8 +38,11 @@ export const MODEL_MAP: Record<string, string> = {
 
 /**
  * Path replacements applied to command body (and to extracted agent prompt).
- * Workspace paths translate to either ${CLAUDE_PLUGIN_ROOT}/knowledge/ (read-only,
- * shipped with plugin) or ./workspace/ (cwd-relative, written at runtime).
+ * Read-only knowledge ships with the plugin (${CLAUDE_PLUGIN_ROOT}/knowledge/).
+ * Generated artifacts write to a shallow per-domain dir at the cwd root
+ * (./portfolio/, ./deals/, ./intel/) — the legacy ./workspace/state/ wrapper
+ * was dropped so deliverables sit two levels from the project root. User-supplied
+ * input materials still live under ./workspace/inbox/ (distinct from outputs).
  *
  * Order matters: the explicit `workspace/X/` patterns run first, then bare
  * `X/` patterns with a negative-lookbehind on `/` so they don't re-match
@@ -48,13 +51,14 @@ export const MODEL_MAP: Record<string, string> = {
 export const PATH_REPLACEMENTS: PathReplacement[] = [
   // Explicit workspace-prefixed forms (most common in SKILL.md)
   { regex: /workspace\/knowledge\//g, to: '${CLAUDE_PLUGIN_ROOT}/knowledge/' },
-  { regex: /workspace\/state\//g, to: './workspace/state/' },
+  { regex: /workspace\/state\//g, to: './' },
   { regex: /workspace\/inbox\//g, to: './workspace/inbox/' },
   // Bare forms (typical in agent prompts). Lookbehind ensures we don't double-replace
   // text that already has a slash prefix from earlier rules.
   { regex: /(?<!\/)\bknowledge\//g, to: '${CLAUDE_PLUGIN_ROOT}/knowledge/' },
-  { regex: /(?<!\/)\bstate\/deals\//g, to: './workspace/state/deals/' },
-  { regex: /(?<!\/)\bstate\/portfolio\//g, to: './workspace/state/portfolio/' },
+  { regex: /(?<!\/)\bstate\/deals\//g, to: './deals/' },
+  { regex: /(?<!\/)\bstate\/portfolio\//g, to: './portfolio/' },
+  { regex: /(?<!\/)\bstate\/intelligence\//g, to: './intel/' },
   { regex: /(?<!\/)\binbox\//g, to: './workspace/inbox/' },
 ]
 
@@ -183,11 +187,11 @@ Run these checks before Step 1; abort on any failure.
    - On failure → switch to read-only mode (output report content to chat, do not
      write files). Tell the user explicitly that no files will be written.
 
-4. **\`./workspace/\` directory check**: if \`./workspace/\` does not exist, ask the
-   user via AskUserQuestion:
-   - A) Create \`./workspace/\` in current directory (recommended)
-   - B) Specify a different path
-   - C) Skip workspace mode (write reports to \`./reports/<slug>/\` instead)
+4. **Output directory auto-created**: reports write to a shallow per-domain dir
+   under the current working directory (e.g. \`./deals/<slug>/\`,
+   \`./portfolio/<slug>/\`, \`./intel/\`). The command creates it with
+   \`mkdir -p\`; no \`./workspace/\` setup is required. If the CWD is not
+   writable, fall back to read-only mode per check 3.
 `
 
 /**
@@ -205,7 +209,7 @@ export const COMMAND_EXTRA_PREFLIGHT: Record<string, string> = {
   memo: `
 
 5. **Evidence file required**: this command synthesizes from accumulated evidence.
-   - Verify \`./workspace/state/<company-slug>/evidence.md\` exists and is non-empty.
+   - Verify \`./<company-slug>/evidence.md\` exists and is non-empty.
    - If missing or empty → HARD FAIL: "memo command needs prior evidence.
      Run \`/analyst-deal:deal-analysis $ARGUMENTS\` first to accumulate evidence."
 `,

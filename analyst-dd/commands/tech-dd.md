@@ -33,11 +33,11 @@ Run these checks before Step 1; abort on any failure.
    - On failure → switch to read-only mode (output report content to chat, do not
      write files). Tell the user explicitly that no files will be written.
 
-4. **`./workspace/` directory check**: if `./workspace/` does not exist, ask the
-   user via AskUserQuestion:
-   - A) Create `./workspace/` in current directory (recommended)
-   - B) Specify a different path
-   - C) Skip workspace mode (write reports to `./reports/<slug>/` instead)
+4. **Output directory auto-created**: reports write to a shallow per-domain dir
+   under the current working directory (e.g. `./deals/<slug>/`,
+   `./portfolio/<slug>/`, `./intel/`). The command creates it with
+   `mkdir -p`; no `./workspace/` setup is required. If the CWD is not
+   writable, fall back to read-only mode per check 3.
 
 ## 执行步骤
 
@@ -50,7 +50,7 @@ Run these checks before Step 1; abort on any failure.
 
 ## 输出
 
-生成技术 DD 报告 → `./workspace/state/deals/techdd/[company_name]/`
+生成技术 DD 报告 → `./deals/techdd/[company_name]/`
 
 - 技术 DD 报告（结构化 Markdown）
 - 技术风险评估矩阵
@@ -63,10 +63,10 @@ Run these checks before Step 1; abort on any failure.
 
 ## Output Location
 
-Reports and evidence write to `./workspace/state/deals/techdd/<slug>/` in the user's current working
-directory. If `./workspace/` was created in the preflight, this path is
-relative to it. Use the company/project name as the slug (lowercase,
-hyphen-separated, ASCII transliteration of CJK if applicable).
+Reports and evidence write to `./deals/techdd/<slug>/` in the user's current working
+directory. The command creates this directory with `mkdir -p`; no
+`./workspace/` wrapper is required. Use the company/project name as the slug
+(lowercase, hyphen-separated, ASCII transliteration of CJK if applicable).
 
 ## Subagent Behavior (inlined from AnalystPro `hardtech-dd` agent definition)
 
@@ -101,11 +101,11 @@ When generating a report, mandatory step — compare BP technical metrics agains
 - ${CLAUDE_PLUGIN_ROOT}/knowledge/glossary.md
 
 ## Write Access
-- ./workspace/state/deals/techdd/[company_name]/
+- ./deals/techdd/[company_name]/
 
 ## Output
 Auto-write the annotated report (with RED FLAG highlights) to
-./workspace/state/deals/techdd/[company_name]/. The report is regeneratable, and the
+./deals/techdd/[company_name]/. The report is regeneratable, and the
 parent deal-analyst's HITL gate covers the user-decision moment — no
 confirmation prompt is needed before saving.
 

@@ -50,7 +50,7 @@ Hard-tech DD on a target company.
 
 The command will:
 
-1. Run preflight (Jina available + cwd writable + workspace + knowledge files).
+1. Run preflight (Jina available + cwd writable + knowledge files).
 2. Read sector-specific feasibility benchmarks from `${CLAUDE_PLUGIN_ROOT}/knowledge/tech_checklist.md`.
 3. Execute the 6-step hardtech-dd pipeline:
    1. **Paper / patent search** — arXiv, Google Scholar, Espacenet via Jina (`jina search --arxiv`, `jina search "{topic} site:patents.google.com"`)
@@ -59,7 +59,7 @@ The command will:
    4. **Contradiction marking** — compare founder's claims vs published literature; flag exaggerations as **RED FLAG** (deviation > 20% auto-flagged)
    5. **Export control screening** — check BIS Entity List / ECCN classification using `${CLAUDE_PLUGIN_ROOT}/knowledge/export_control_rules.md`
    6. **Supply chain concentration analysis** — key materials / equipment / foundry dependency risk
-4. Write annotated DD report (with RED FLAG highlights) to `./workspace/state/deals/techdd/<slug>/<DATE>_<slug>_tech_dd_report.md`.
+4. Write annotated DD report (with RED FLAG highlights) to `./deals/techdd/<slug>/<DATE>_<slug>_tech_dd_report.md`.
 
 Real example: for Cambricon, the report flags TSMC dependency under Entity List FDPR, ~20% yield rumors on 7nm, customer concentration risk (top customer ~80%, top 5 88.66%), and IP origin questions (DianNao academic spinoff).
 
@@ -148,12 +148,12 @@ This plugin's data preflight prioritizes Chinese sources (36kr / huxiu / patenth
 ## Output locations
 
 ```
-./workspace/state/deals/techdd/<slug>/
+./deals/techdd/<slug>/
 ├── <DATE>_<slug>_tech_dd_report.md    ← tech-dd output
 └── (no enricher output here — enricher edits memo file in place)
 ```
 
-`interview-notes-enricher` edits the user's memo file **in place** at the `MEMO_PATH` provided in Step 0. It does not write to `./workspace/state/`. Commit your memo file before running for reversibility.
+`interview-notes-enricher` edits the user's memo file **in place** at the `MEMO_PATH` provided in Step 0. It does not write to any per-domain output dir. Commit your memo file before running for reversibility.
 
 ## See also
 

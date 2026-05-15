@@ -51,7 +51,7 @@ Industry deep-research with Chinese data source preflight.
 
 The command will:
 
-1. Run preflight (Jina available + cwd writable + workspace + knowledge files).
+1. Run preflight (Jina available + cwd writable + knowledge files).
 2. Read industry baseline from `${CLAUDE_PLUGIN_ROOT}/knowledge/industry_map.md` and competitor inventory from `${CLAUDE_PLUGIN_ROOT}/knowledge/competitors.md`.
 3. Execute the multi-source preflight chain (see `${CLAUDE_PLUGIN_ROOT}/knowledge/cn-data-sources.md`):
    - `jina search "{行业} 市场规模 site:36kr.com" --json` — startup-side coverage
@@ -66,7 +66,7 @@ The command will:
    - 政策环境 (recent regulations, subsidies, restrictions)
    - 技术拐点 (current tech maturity, expected next-gen transitions)
    - 投资机会窗口 (where capital is flowing, valuation benchmarks)
-5. Write report to `./workspace/state/research/<industry-slug>/<DATE>_industry-report.md`.
+5. Write report to `./research/<industry-slug>/<DATE>_industry-report.md`.
 
 Real example: for "AI芯片", the report will pull recent 36kr coverage, 国务院 policy on chip self-sufficiency, eastmoney research on listed players (英伟达 / 寒武纪 / 海光 / 平头哥), and arxiv preprints on chip architectures.
 
@@ -176,11 +176,11 @@ This should never happen — the command's hard rule is additive-only. If it doe
 ## Output locations
 
 ```
-./workspace/state/research/<industry-slug>/
+./research/<industry-slug>/
 └── <DATE>_industry-report.md          ← industry-research output
 ```
 
-`enrich-report` edits the user's base report **in place** (or creates `<name>-enriched.md` in `copy` mode) at the path provided in Step 0. It does not write to `./workspace/state/`.
+`enrich-report` edits the user's base report **in place** (or creates `<name>-enriched.md` in `copy` mode) at the path provided in Step 0. It does not write to any per-domain output dir.
 
 ## See also
 

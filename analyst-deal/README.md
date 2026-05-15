@@ -60,10 +60,10 @@ Project triage → Phase 1 basic-info report → Phase 1.5 DD prep package.
 
 The command will:
 
-1. Run preflight (Jina available + cwd writable + workspace check).
-2. Ask if it should create `./workspace/` if missing (recommended: yes).
+1. Run preflight (Jina available + cwd writable + knowledge files).
+2. Auto-create the shallow output dir (`./deals/processing/<slug>/`) with `mkdir -p` — no `./workspace/` setup needed.
 3. Run Chinese market data preflight using Jina across multiple data tiers (see `${CLAUDE_PLUGIN_ROOT}/knowledge/cn-data-sources.md` for the 4-level fallback chain).
-4. Write Phase 1 basic-info report to `./workspace/state/deals/processing/<slug>/<DATE>_<slug>_basic_info.md`.
+4. Write Phase 1 basic-info report to `./deals/processing/<slug>/<DATE>_<slug>_basic_info.md`.
 5. Append a YAML scorecard with 6-dimension scoring (team / market / tech / business / 国产替代 / 估值合理性) and hard-stop checks.
 6. Present a HITL gate: Continue to Phase 1.5 DD prep / Hold / Reject.
 7. If Continue: write `dd_checklist.md` + `dd_questions.md` to the same directory and present a Gate 2 (Send to founder / Edit then send / Skip founder meeting).
@@ -78,9 +78,9 @@ Synthesizes an IC memo from accumulated evidence.
 /analyst-deal:memo 寒武纪
 ```
 
-Requires that `./workspace/state/deals/<slug>/evidence.md` exists (built up during `deal-analysis` runs). Hard-fails with a clear error if evidence is missing.
+Requires that `./deals/<slug>/evidence.md` exists (built up during `deal-analysis` runs). Hard-fails with a clear error if evidence is missing.
 
-Output: `./workspace/state/deals/<slug>/<DATE>_<slug>_ic_memo_draft.md`.
+Output: `./deals/<slug>/<DATE>_<slug>_ic_memo_draft.md`.
 
 ### `/analyst-deal:codex-polish-report [公司名]`
 
@@ -103,7 +103,7 @@ Scans market intel for a sector. Optional argument; defaults to all-sector daily
 /analyst-deal:news-scan policy             # regulatory updates
 ```
 
-Output: per-sector intel briefing markdown at `./workspace/state/intel/<DATE>-news-scan.md`.
+Output: per-sector intel briefing markdown at `./intel/<DATE>-news-scan.md`.
 
 ### `/analyst-deal:portfolio-tracking [公司名] [季度]`
 
@@ -124,9 +124,9 @@ Required inputs:
 - 合并报表 PDF/xlsx (current period; optional 1-3 历史 periods for year-over-year)
 - Optional: previous tracking report (auto-inherits Section 二 historical equity changes), board materials, interview notes, news clippings
 
-**Default input directory**: `./workspace/state/portfolio/<slug>/`. The command auto-scans this directory at Step 3 for filename patterns matching each material type (`*合并报表*.pdf` / `*财务报表*.pdf` / `*投后跟进报告*.md` / `*董事会*.md` / `*访谈*.md` / `*新闻*.md` etc.) and presents the auto-detected paths via `AskUserQuestion` with two options: **A) Use auto-detected (recommended)** or **B) Override with custom paths**. Drop your quarterly materials into that directory before running and you skip all path-typing.
+**Default input directory**: `./portfolio/<slug>/`. The command auto-scans this directory at Step 3 for filename patterns matching each material type (`*合并报表*.pdf` / `*财务报表*.pdf` / `*投后跟进报告*.md` / `*董事会*.md` / `*访谈*.md` / `*新闻*.md` etc.) and presents the auto-detected paths via `AskUserQuestion` with two options: **A) Use auto-detected (recommended)** or **B) Override with custom paths**. Drop your quarterly materials into that directory before running and you skip all path-typing.
 
-Output: `./workspace/state/portfolio/<slug>/<YYYYQX>_post_investment_tracking.md`.
+Output: `./portfolio/<slug>/<YYYYQX>_post_investment_tracking.md`.
 
 **Hard guarantees**:
 - Financial numbers traceable to specific 合并报表 line items; gaps shown as `—` and listed in 数据缺口 section
@@ -169,10 +169,10 @@ You haven't run `deal-analysis` first for that company. The memo command synthes
 
 ## Output locations
 
-All commands write to `./workspace/state/...` relative to your current working directory:
+All commands write to `./...` relative to your current working directory:
 
 ```
-./workspace/state/deals/
+./deals/
 ├── processing/<slug>/                  ← deal-analysis, memo
 │   ├── <DATE>_<slug>_basic_info.md
 │   ├── <DATE>_<slug>_dd_checklist.md
@@ -181,9 +181,9 @@ All commands write to `./workspace/state/...` relative to your current working d
 │   └── <DATE>_<slug>_ic_memo_draft.md
 ├── archived/                            (deals that progressed past Phase 2)
 └── rejected/                            (deals declined at HITL gates)
-./workspace/state/intel/                 ← news-scan
+./intel/                 ← news-scan
 └── <DATE>-news-scan.md
-./workspace/state/portfolio/<slug>/      ← portfolio-tracking
+./portfolio/<slug>/      ← portfolio-tracking
 ├── project_baseline.yml                 (one-time investment terms; reused each quarter)
 ├── competitors.yml                      (editable competitor list; reused each quarter)
 └── <YYYYQX>_post_investment_tracking.md (one report per quarter)
