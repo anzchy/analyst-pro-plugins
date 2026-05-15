@@ -37,30 +37,97 @@ export const MODEL_MAP: Record<string, string> = {
 }
 
 /**
+ * Canonical output-domain aliases. AnalystPro nested every generated artifact
+ * under `workspace/state/<domain>/`; the plugin flattens these to `./<alias>/`
+ * so deliverables sit two levels from the project root. Most domains keep
+ * their name; `intelligence` abbreviates to `intel`. This is the single source
+ * of truth shared by the path-replacement rules (below) and the Output
+ * Location section (build-from-source.ts) — add a domain here and both pick
+ * it up automatically.
+ */
+export const DOMAIN_ALIASES: Record<string, string> = {
+  deals: 'deals',
+  portfolio: 'portfolio',
+  intelligence: 'intel',
+  research: 'research',
+}
+
+/**
+ * Shared left-boundary guard for every path rule. Refuses to rewrite a path
+ * segment that is glued to a longer token — i.e. preceded by a word char,
+ * `.`, `/`, or `-`. This (a) blocks absolute paths (`/abs/workspace/state/…`)
+ * and hyphen-glued tokens (`foo-state/…`) from being mangled, and (b) makes
+ * every rule idempotent: the slash-prefixed output of an earlier rule
+ * (`./deals/`, `${CLAUDE_PLUGIN_ROOT}/knowledge/`, `./workspace/inbox/`) can
+ * never be re-matched on a second pass.
+ */
+const PATH_LB = '(?<![\\w./-])'
+
+/**
  * Path replacements applied to command body (and to extracted agent prompt).
  * Read-only knowledge ships with the plugin (${CLAUDE_PLUGIN_ROOT}/knowledge/).
  * Generated artifacts write to a shallow per-domain dir at the cwd root
- * (./portfolio/, ./deals/, ./intel/) — the legacy ./workspace/state/ wrapper
- * was dropped so deliverables sit two levels from the project root. User-supplied
- * input materials still live under ./workspace/inbox/ (distinct from outputs).
+ * (./deals/, ./portfolio/, ./intel/, ./research/) — the legacy
+ * ./workspace/state/ wrapper was dropped so deliverables sit two levels from
+ * the project root. User-supplied input materials still live under
+ * ./workspace/inbox/ (distinct from outputs).
  *
- * Order matters: the explicit `workspace/X/` patterns run first, then bare
- * `X/` patterns with a negative-lookbehind on `/` so they don't re-match
- * prefixes already produced by earlier rules (which all end in `/`).
+ * Order matters:
+ *  1. The memo-specific `$ARGUMENTS-slug` rule runs before the broad
+ *     `workspace/state/` fallback so memo's evidence path stays aligned with
+ *     where deal-analysis actually writes it (`./deals/processing/<slug>/`).
+ *  2. Explicit per-domain `workspace/state/<domain>/` rules run before the
+ *     broad fallback so abbreviated aliases (intelligence → intel) survive —
+ *     prefix-only stripping would otherwise leave `./intelligence/`.
+ *  3. The broad `workspace/state/` fallback catches any non-aliased domain.
+ *  4. Bare `state/<domain>/` forms (agent-prompt style) run last.
  */
-export const PATH_REPLACEMENTS: PathReplacement[] = [
-  // Explicit workspace-prefixed forms (most common in SKILL.md)
-  { regex: /workspace\/knowledge\//g, to: '${CLAUDE_PLUGIN_ROOT}/knowledge/' },
-  { regex: /workspace\/state\//g, to: './' },
-  { regex: /workspace\/inbox\//g, to: './workspace/inbox/' },
-  // Bare forms (typical in agent prompts). Lookbehind ensures we don't double-replace
-  // text that already has a slash prefix from earlier rules.
-  { regex: /(?<!\/)\bknowledge\//g, to: '${CLAUDE_PLUGIN_ROOT}/knowledge/' },
-  { regex: /(?<!\/)\bstate\/deals\//g, to: './deals/' },
-  { regex: /(?<!\/)\bstate\/portfolio\//g, to: './portfolio/' },
-  { regex: /(?<!\/)\bstate\/intelligence\//g, to: './intel/' },
-  { regex: /(?<!\/)\binbox\//g, to: './workspace/inbox/' },
-]
+function buildPathReplacements(): PathReplacement[] {
+  const rules: PathReplacement[] = [
+    {
+      regex: new RegExp(`${PATH_LB}workspace\\/knowledge\\/`, 'g'),
+      to: '${CLAUDE_PLUGIN_ROOT}/knowledge/',
+    },
+    // memo synthesizes from evidence that deal-analysis writes to
+    // ./deals/processing/<slug>/. Upstream memo SKILL.md references
+    // `workspace/state/$ARGUMENTS-slug/`; realign it to that contract before
+    // the broad fallback strips it to a bare, wrong `./$ARGUMENTS-slug/`.
+    {
+      regex: new RegExp(`${PATH_LB}workspace\\/state\\/\\$ARGUMENTS-slug\\/`, 'g'),
+      to: './deals/processing/$ARGUMENTS-slug/',
+    },
+  ]
+  for (const [domain, alias] of Object.entries(DOMAIN_ALIASES)) {
+    rules.push({
+      regex: new RegExp(`${PATH_LB}workspace\\/state\\/${domain}\\/`, 'g'),
+      to: `./${alias}/`,
+    })
+  }
+  rules.push(
+    { regex: new RegExp(`${PATH_LB}workspace\\/state\\/`, 'g'), to: './' },
+    {
+      regex: new RegExp(`${PATH_LB}workspace\\/inbox\\/`, 'g'),
+      to: './workspace/inbox/',
+    },
+    {
+      regex: new RegExp(`${PATH_LB}knowledge\\/`, 'g'),
+      to: '${CLAUDE_PLUGIN_ROOT}/knowledge/',
+    },
+  )
+  for (const [domain, alias] of Object.entries(DOMAIN_ALIASES)) {
+    rules.push({
+      regex: new RegExp(`${PATH_LB}state\\/${domain}\\/`, 'g'),
+      to: `./${alias}/`,
+    })
+  }
+  rules.push({
+    regex: new RegExp(`${PATH_LB}inbox\\/`, 'g'),
+    to: './workspace/inbox/',
+  })
+  return rules
+}
+
+export const PATH_REPLACEMENTS: PathReplacement[] = buildPathReplacements()
 
 /**
  * Cleansing regexes applied ONLY to extracted agent prompts (not command body).
@@ -192,6 +259,12 @@ Run these checks before Step 1; abort on any failure.
    \`./portfolio/<slug>/\`, \`./intel/\`). The command creates it with
    \`mkdir -p\`; no \`./workspace/\` setup is required. If the CWD is not
    writable, fall back to read-only mode per check 3.
+   - **Slug safety**: derive every \`<slug>\` from the company/project name only —
+     lowercase, hyphen-separated, ASCII transliteration of CJK (CJK chars may be
+     kept verbatim). Strip any \`/\`, \`..\`, leading \`.\`, \`~\`, or absolute-path
+     prefix before it is interpolated into a path. A slug that is not a single
+     plain path segment is a HARD FAIL — never \`mkdir\`/write outside the
+     per-domain dir.
 `
 
 /**
@@ -209,7 +282,8 @@ export const COMMAND_EXTRA_PREFLIGHT: Record<string, string> = {
   memo: `
 
 5. **Evidence file required**: this command synthesizes from accumulated evidence.
-   - Verify \`./<company-slug>/evidence.md\` exists and is non-empty.
+   - Verify \`./deals/processing/<company-slug>/evidence.md\` exists and is non-empty
+     (this is where \`/analyst-deal:deal-analysis\` writes it).
    - If missing or empty → HARD FAIL: "memo command needs prior evidence.
      Run \`/analyst-deal:deal-analysis $ARGUMENTS\` first to accumulate evidence."
 `,

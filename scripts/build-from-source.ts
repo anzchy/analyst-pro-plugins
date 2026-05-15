@@ -144,6 +144,17 @@ ${cleansed.trim()}
 
 // ─── Output Location section ─────────────────────────────────────────────────
 
+// Per-command output-domain overrides. Most commands inherit their plugin's
+// default domain, but a few write elsewhere — e.g. news-scan lives in the
+// analyst-deal plugin but emits market intelligence into ./intel/ with dated
+// (not per-slug) filenames. Keyed by command name.
+const COMMAND_OUTPUT_OVERRIDE: Record<
+  string,
+  { base: string; slugless?: boolean }
+> = {
+  'news-scan': { base: './intel', slugless: true },
+}
+
 function buildOutputLocationSection(pluginName: string, cmdName: string): string {
   // Conservative default — most commands write under a shallow ./<command-domain>/
   const domains: Record<string, string> = {
@@ -151,13 +162,17 @@ function buildOutputLocationSection(pluginName: string, cmdName: string): string
     'analyst-dd': './deals/techdd',
     'analyst-research': './research',
   }
-  const base = domains[pluginName] ?? '.'
+  const override = COMMAND_OUTPUT_OVERRIDE[cmdName]
+  const base = override?.base ?? domains[pluginName] ?? '.'
+  const target = override?.slugless ? `\`${base}/\`` : `\`${base}/<slug>/\``
+  const slugNote = override?.slugless
+    ? 'Filenames are date-prefixed to avoid overwrites.'
+    : 'Use the company/project name as the slug (lowercase, hyphen-separated, ASCII transliteration of CJK if applicable).'
   return `## Output Location
 
-Reports and evidence write to \`${base}/<slug>/\` in the user's current working
+Reports and evidence write to ${target} in the user's current working
 directory. The command creates this directory with \`mkdir -p\`; no
-\`./workspace/\` wrapper is required. Use the company/project name as the slug
-(lowercase, hyphen-separated, ASCII transliteration of CJK if applicable).
+\`./workspace/\` wrapper is required. ${slugNote}
 `
 }
 

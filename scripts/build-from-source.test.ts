@@ -70,6 +70,48 @@ describe('applyPathReplacements', () => {
     const out = applyPathReplacements('My workspace.md is fine.')
     expect(out).toBe('My workspace.md is fine.')
   })
+
+  it('maps workspace/state/intelligence/ to ./intel/ (not ./intelligence/)', () => {
+    const out = applyPathReplacements('Archive workspace/state/intelligence/news_archive/x.md')
+    expect(out).toBe('Archive ./intel/news_archive/x.md')
+  })
+
+  it('maps workspace/state/research/ to ./research/', () => {
+    const out = applyPathReplacements('Write workspace/state/research/acme/report.md')
+    expect(out).toBe('Write ./research/acme/report.md')
+  })
+
+  it('maps bare state/research/ to ./research/', () => {
+    const out = applyPathReplacements('Output: state/research/acme/r.md')
+    expect(out).toBe('Output: ./research/acme/r.md')
+  })
+
+  it('realigns memo workspace/state/$ARGUMENTS-slug/ to ./deals/processing/', () => {
+    const out = applyPathReplacements(
+      'Read `workspace/state/$ARGUMENTS-slug/evidence.md`',
+    )
+    expect(out).toBe('Read `./deals/processing/$ARGUMENTS-slug/evidence.md`')
+  })
+
+  it('is idempotent — a second pass changes nothing', () => {
+    const input =
+      'Read workspace/knowledge/a.md, write workspace/state/deals/x.md and ' +
+      'workspace/state/intelligence/y.md, check workspace/inbox/z.md, ' +
+      'memo workspace/state/$ARGUMENTS-slug/evidence.md, see knowledge/g.md'
+    const once = applyPathReplacements(input)
+    const twice = applyPathReplacements(once)
+    expect(twice).toBe(once)
+  })
+
+  it('does NOT rewrite a hyphen-glued token (foo-state/deals/)', () => {
+    const out = applyPathReplacements('see foo-state/deals/x.md')
+    expect(out).toBe('see foo-state/deals/x.md')
+  })
+
+  it('does NOT rewrite an absolute path (/abs/workspace/state/deals/)', () => {
+    const out = applyPathReplacements('at /abs/workspace/state/deals/x.md')
+    expect(out).toBe('at /abs/workspace/state/deals/x.md')
+  })
 })
 
 // ─── AGENT_PROMPT_CLEANSING ─────────────────────────────────────────────────

@@ -37,6 +37,12 @@ Run these checks before Step 1; abort on any failure.
    `./portfolio/<slug>/`, `./intel/`). The command creates it with
    `mkdir -p`; no `./workspace/` setup is required. If the CWD is not
    writable, fall back to read-only mode per check 3.
+   - **Slug safety**: derive every `<slug>` from the company/project name only —
+     lowercase, hyphen-separated, ASCII transliteration of CJK (CJK chars may be
+     kept verbatim). Strip any `/`, `..`, leading `.`, `~`, or absolute-path
+     prefix before it is interpolated into a path. A slug that is not a single
+     plain path segment is a HARD FAIL — never `mkdir`/write outside the
+     per-domain dir.
 
 ## 参数
 
@@ -84,10 +90,9 @@ Score 1-2 仅归档至 `./intel/news_archive/`。
 
 ## Output Location
 
-Reports and evidence write to `./deals/<slug>/` in the user's current working
+Reports and evidence write to `./intel/` in the user's current working
 directory. The command creates this directory with `mkdir -p`; no
-`./workspace/` wrapper is required. Use the company/project name as the slug
-(lowercase, hyphen-separated, ASCII transliteration of CJK if applicable).
+`./workspace/` wrapper is required. Filenames are date-prefixed to avoid overwrites.
 
 ## Subagent Behavior (inlined from AnalystPro `market-intel` agent definition)
 

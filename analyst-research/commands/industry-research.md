@@ -38,6 +38,12 @@ Run these checks before Step 1; abort on any failure.
    `./portfolio/<slug>/`, `./intel/`). The command creates it with
    `mkdir -p`; no `./workspace/` setup is required. If the CWD is not
    writable, fall back to read-only mode per check 3.
+   - **Slug safety**: derive every `<slug>` from the company/project name only —
+     lowercase, hyphen-separated, ASCII transliteration of CJK (CJK chars may be
+     kept verbatim). Strip any `/`, `..`, leading `.`, `~`, or absolute-path
+     prefix before it is interpolated into a path. A slug that is not a single
+     plain path segment is a HARD FAIL — never `mkdir`/write outside the
+     per-domain dir.
 
 ## 执行步骤
 
@@ -55,7 +61,7 @@ Run these checks before Step 1; abort on any failure.
    - 两种方法交叉验证，标明假设和数据来源
 5. 绘制竞争格局矩阵（关键玩家、融资状态、市场份额、技术路线）
 6. 撰写投资观点（bull case / bear case / base case）
-7. 生成行业研究报告 → `state/research/[sector_name]/`
+7. 生成行业研究报告 → `./research/[sector_name]/`
 
 ## 输出格式
 
@@ -106,8 +112,7 @@ Run these checks before Step 1; abort on any failure.
 
 Reports and evidence write to `./research/<slug>/` in the user's current working
 directory. The command creates this directory with `mkdir -p`; no
-`./workspace/` wrapper is required. Use the company/project name as the slug
-(lowercase, hyphen-separated, ASCII transliteration of CJK if applicable).
+`./workspace/` wrapper is required. Use the company/project name as the slug (lowercase, hyphen-separated, ASCII transliteration of CJK if applicable).
 
 ## Subagent Behavior (inlined from AnalystPro `industry-researcher` agent definition)
 
@@ -136,7 +141,7 @@ This is NORMAL — the user's actual selection is in the denial message. Treat t
 - ${CLAUDE_PLUGIN_ROOT}/knowledge/glossary.md
 
 ## Write Access
-- state/research/[sector_name]/
+- ./research/[sector_name]/
 
 ## Output Format
 Generate structured Markdown report with:

@@ -43,6 +43,12 @@ Run these checks before Step 1; abort on any failure.
    `./portfolio/<slug>/`, `./intel/`). The command creates it with
    `mkdir -p`; no `./workspace/` setup is required. If the CWD is not
    writable, fall back to read-only mode per check 3.
+   - **Slug safety**: derive every `<slug>` from the company/project name only —
+     lowercase, hyphen-separated, ASCII transliteration of CJK (CJK chars may be
+     kept verbatim). Strip any `/`, `..`, leading `.`, `~`, or absolute-path
+     prefix before it is interpolated into a path. A slug that is not a single
+     plain path segment is a HARD FAIL — never `mkdir`/write outside the
+     per-domain dir.
 
 Systematically integrate scattered interview notes, field research, or qualitative data files into an existing base report. The skill reads all source files, understands the report's structure, creates a section-by-section integration plan, and executes edits that add interview-sourced insights with clear attribution — without deleting or modifying any original content.
 
@@ -241,6 +247,5 @@ timeline specifics from R&D expert.
 
 Reports and evidence write to `./research/<slug>/` in the user's current working
 directory. The command creates this directory with `mkdir -p`; no
-`./workspace/` wrapper is required. Use the company/project name as the slug
-(lowercase, hyphen-separated, ASCII transliteration of CJK if applicable).
+`./workspace/` wrapper is required. Use the company/project name as the slug (lowercase, hyphen-separated, ASCII transliteration of CJK if applicable).
 
