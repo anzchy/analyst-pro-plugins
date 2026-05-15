@@ -20,14 +20,32 @@ allowed-tools: Read, Write, AskUserQuestion, Bash, Bash(jina:*), Glob, Agent
 
 按顺序执行；任一失败立刻中止。
 
-1. **`jina` CLI + `JINA_API_KEY` available**:
-   - Bash: `which jina && [ -n "${JINA_API_KEY}" ] && echo OK || echo FAIL`
-   - FAIL → 输出：
-     "本命令需要 jina-cli + JINA_API_KEY。请：
-      pip install jina-cli
-      export JINA_API_KEY=jina_xxxxxx
-      然后重启 Claude Code 重试。"
-     然后结束会话，**不**继续。
+<!-- BEGIN MANAGED:jina-preflight — synced from scripts/translation-rules.ts (JINA_KEY_PREFLIGHT_CHECK); edit there, then run `npm run build:plugins`. Manual edits here are reverted. -->
+1. **`jina` CLI available + `JINA_API_KEY` resolvable (terminal env *or* project `.env`)**:
+   - Run via Bash (loads the key from `./.env` when it is not already exported):
+     ```bash
+     which jina >/dev/null 2>&1 || echo FAIL_NO_JINA
+     [ -z "${JINA_API_KEY:-}" ] && [ -f .env ] && export "$(grep -E '^[[:space:]]*JINA_API_KEY=' .env | tail -1 | xargs)"
+     [ -n "${JINA_API_KEY:-}" ] && echo KEY_OK || echo FAIL_NO_KEY
+     ```
+   - Output contains `FAIL_NO_JINA` → output exactly:
+     "本命令需要 jina-cli。请运行 pip install jina-cli 后重启 Claude Code 重试。"
+     Then end the session — do NOT continue.
+   - Output contains `FAIL_NO_KEY` → output exactly:
+     "本命令需要 JINA_API_KEY，两种方式任选其一：
+      (1) 推荐：在当前项目根目录创建 .env 文件，写入一行（值不要加引号）：
+          JINA_API_KEY=jina_xxxxxx
+      (2) 或在终端执行 export JINA_API_KEY=jina_xxxxxx 后重启 Claude Code。
+      配置后重试。"
+     Then end the session — do NOT continue.
+   - Output contains `KEY_OK` → this check passes. **Each Bash tool call is a
+     fresh shell, so the export above does NOT persist.** For the rest of this
+     command, prefix EVERY jina invocation with the same loader so the key is
+     re-resolved from `.env` when absent:
+     `[ -z "${JINA_API_KEY:-}" ] && [ -f .env ] && export "$(grep -E '^[[:space:]]*JINA_API_KEY=' .env | tail -1 | xargs)"; jina <subcommand> ...`
+     Security: treat `.env` as untrusted data — only the `JINA_API_KEY` line
+     is read; never `source` or execute `.env`.
+<!-- END MANAGED:jina-preflight -->
 
 2. **Schema knowledge file readable**:
    - Read `${CLAUDE_PLUGIN_ROOT}/knowledge/competitor_card_schema.md`

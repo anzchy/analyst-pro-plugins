@@ -8,6 +8,7 @@ import { describe, expect, it } from 'vitest'
 import { extractPrompt } from './lib/extract-prompt.js'
 import {
   applyAgentPromptCleansing,
+  applyManagedBlocks,
   applyPathReplacements,
   applyWebToolReplacements,
   dropFrontmatterFields,
@@ -16,6 +17,7 @@ import {
   transformAgentPrompt,
   transformCommandBody,
 } from './lib/apply-rules.js'
+import { JINA_KEY_PREFLIGHT_CHECK } from './translation-rules.js'
 
 // ─── PATH_REPLACEMENTS ──────────────────────────────────────────────────────
 
@@ -374,6 +376,59 @@ Read workspace/knowledge/red_flags.md`
     expect(out).toContain('jina search "X 融资" --json')
     expect(out).toContain('jina read https://36kr.com/foo --json')
     expect(out).toContain('${CLAUDE_PLUGIN_ROOT}/knowledge/red_flags.md')
+  })
+})
+
+// ─── applyManagedBlocks ────────────────────────────────────────────────────
+
+describe('applyManagedBlocks', () => {
+  const BEGIN =
+    '<!-- BEGIN MANAGED:jina-preflight — synced from somewhere; edit there -->'
+  const END = '<!-- END MANAGED:jina-preflight -->'
+
+  it('replaces drifted inner content with the canonical block', () => {
+    const drifted = `## Preflight
+
+${BEGIN}
+1. **OUTDATED** hand-edited preflight text that has drifted
+   - this should be replaced wholesale
+${END}
+
+2. **Next check** stays untouched`
+    const out = applyManagedBlocks(drifted)
+    expect(out).toContain(JINA_KEY_PREFLIGHT_CHECK)
+    expect(out).not.toContain('OUTDATED')
+    // markers preserved verbatim
+    expect(out).toContain(BEGIN)
+    expect(out).toContain(END)
+    // surrounding text untouched
+    expect(out).toContain('2. **Next check** stays untouched')
+  })
+
+  it('is idempotent — applying twice yields identical output', () => {
+    const drifted = `${BEGIN}\nstale\n${END}`
+    const once = applyManagedBlocks(drifted)
+    const twice = applyManagedBlocks(once)
+    expect(twice).toBe(once)
+  })
+
+  it('leaves text with no managed markers unchanged', () => {
+    const plain = '## Preflight\n\n1. some check\n2. another check\n'
+    expect(applyManagedBlocks(plain)).toBe(plain)
+  })
+
+  it('ignores markers for an unknown managed id', () => {
+    const text = `<!-- BEGIN MANAGED:not-a-real-id -->\nkeep me\n<!-- END MANAGED:not-a-real-id -->`
+    expect(applyManagedBlocks(text)).toBe(text)
+  })
+
+  it('syncs multiple occurrences of the same managed id', () => {
+    const text = `${BEGIN}\nstale A\n${END}\n\nfiller\n\n${BEGIN}\nstale B\n${END}`
+    const out = applyManagedBlocks(text)
+    expect(out).not.toContain('stale A')
+    expect(out).not.toContain('stale B')
+    const occurrences = out.split(JINA_KEY_PREFLIGHT_CHECK).length - 1
+    expect(occurrences).toBe(2)
   })
 })
 

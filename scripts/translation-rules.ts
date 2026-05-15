@@ -231,19 +231,49 @@ export const ALLOWED_TOOLS_PATCH = {
   ],
 } as const
 
+/**
+ * The shared jina-CLI + JINA_API_KEY preflight (check 1). This is the single
+ * source of truth for the `.env`-aware key loader. It is:
+ *  - interpolated into `FAILURE_MODE_PREFLIGHT` below (auto / manual-copy
+ *    commands inject the whole preflight), and
+ *  - re-exported via `MANAGED_BLOCKS` so the build can sync this exact text
+ *    into the managed region of hand-written command files (which keep their
+ *    own checks 2-4) without drift.
+ *
+ * Keep this as the bare numbered block (`1. …`) — no section heading, no
+ * trailing newline — so it composes cleanly in both call sites.
+ */
+export const JINA_KEY_PREFLIGHT_CHECK = `1. **\`jina\` CLI available + \`JINA_API_KEY\` resolvable (terminal env *or* project \`.env\`)**:
+   - Run via Bash (loads the key from \`./.env\` when it is not already exported):
+     \`\`\`bash
+     which jina >/dev/null 2>&1 || echo FAIL_NO_JINA
+     [ -z "\${JINA_API_KEY:-}" ] && [ -f .env ] && export "\$(grep -E '^[[:space:]]*JINA_API_KEY=' .env | tail -1 | xargs)"
+     [ -n "\${JINA_API_KEY:-}" ] && echo KEY_OK || echo FAIL_NO_KEY
+     \`\`\`
+   - Output contains \`FAIL_NO_JINA\` → output exactly:
+     "本命令需要 jina-cli。请运行 pip install jina-cli 后重启 Claude Code 重试。"
+     Then end the session — do NOT continue.
+   - Output contains \`FAIL_NO_KEY\` → output exactly:
+     "本命令需要 JINA_API_KEY，两种方式任选其一：
+      (1) 推荐：在当前项目根目录创建 .env 文件，写入一行（值不要加引号）：
+          JINA_API_KEY=jina_xxxxxx
+      (2) 或在终端执行 export JINA_API_KEY=jina_xxxxxx 后重启 Claude Code。
+      配置后重试。"
+     Then end the session — do NOT continue.
+   - Output contains \`KEY_OK\` → this check passes. **Each Bash tool call is a
+     fresh shell, so the export above does NOT persist.** For the rest of this
+     command, prefix EVERY jina invocation with the same loader so the key is
+     re-resolved from \`.env\` when absent:
+     \`[ -z "\${JINA_API_KEY:-}" ] && [ -f .env ] && export "\$(grep -E '^[[:space:]]*JINA_API_KEY=' .env | tail -1 | xargs)"; jina <subcommand> ...\`
+     Security: treat \`.env\` as untrusted data — only the \`JINA_API_KEY\` line
+     is read; never \`source\` or execute \`.env\`.`
+
 /** Standard "Failure Mode Preflight" section injected at the top of every command body. */
 export const FAILURE_MODE_PREFLIGHT = `## Failure Mode Preflight (hard-fail by default)
 
 Run these checks before Step 1; abort on any failure.
 
-1. **\`jina\` CLI + \`JINA_API_KEY\` available**:
-   - Run via Bash: \`which jina && [ -n "\${JINA_API_KEY}" ] && echo OK || echo FAIL\`
-   - On FAIL → output exactly:
-     "本命令需要 jina-cli + JINA_API_KEY。请：
-      pip install jina-cli
-      export JINA_API_KEY=jina_xxxxxx
-      然后重启 Claude Code 重试。"
-     Then end the session — do NOT continue.
+${JINA_KEY_PREFLIGHT_CHECK}
 
 2. **Plugin-shipped knowledge files readable**: each knowledge file referenced below
    should be readable via \`Read \${CLAUDE_PLUGIN_ROOT}/knowledge/<file>.md\`. If a
@@ -294,4 +324,24 @@ export const COMMAND_EXTRA_PREFLIGHT: Record<string, string> = {
    - If 0 matches → HARD FAIL: "No transcript files found matching the pattern.
      Please verify the directory or adjust the glob."
 `,
+}
+
+/**
+ * Single-source-of-truth managed blocks. Hand-written command files
+ * (`transform: 'manual-handwritten'`) are otherwise preserved untouched by the
+ * build, so any shared region they embed (e.g. the jina key preflight) would
+ * drift over time. The build wraps each such region in the source file with
+ *
+ *   <!-- BEGIN MANAGED:<id> ... -->
+ *   ...canonical content...
+ *   <!-- END MANAGED:<id> -->
+ *
+ * and on every build/check re-syncs the inner text to the canonical value
+ * here. `build:plugins:check` fails (non-zero exit) if a managed block has
+ * drifted, so the hand-written copy can never silently diverge.
+ *
+ * Keyed by managed-block id; value is the canonical inner text (no markers).
+ */
+export const MANAGED_BLOCKS: Record<string, string> = {
+  'jina-preflight': JINA_KEY_PREFLIGHT_CHECK,
 }

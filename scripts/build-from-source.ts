@@ -31,6 +31,7 @@ import matter from 'gray-matter'
 
 import { extractPrompt } from './lib/extract-prompt.js'
 import {
+  applyManagedBlocks,
   dropFrontmatterFields,
   patchAllowedTools,
   rewriteModel,
@@ -438,11 +439,34 @@ function buildPlugin(
   for (const [cmdName, cmdSource] of Object.entries(def.commands)) {
     const dst = join(cmdsDir, `${cmdName}.md`)
 
-    // 'manual-handwritten' has unique behavior: preserve existing file untouched.
-    // Only emit a stub if the file doesn't exist yet (first-time scaffold).
+    // 'manual-handwritten' preserves the hand-written file, but any MANAGED
+    // block embedded in it is re-synced to its canonical value so a shared
+    // region (e.g. the jina key preflight) can never silently drift. Only
+    // emit a stub if the file doesn't exist yet (first-time scaffold).
     if (cmdSource.transform === 'manual-handwritten' && existsSync(dst)) {
+      const current = readFileSync(dst, 'utf8')
+      const synced = applyManagedBlocks(current)
+      if (synced !== current) {
+        if (check) {
+          stats.errors.push(
+            `${name}/${cmdName}: managed-block drift — run \`npm run build:plugins\` to re-sync`,
+          )
+          console.log(
+            `[check] managed-block drift in ${name}/commands/${cmdName}.md`,
+          )
+        } else {
+          writeFileSync(dst, synced)
+          if (verbose)
+            console.log(
+              `synced managed blocks in ${name}/commands/${cmdName}.md`,
+            )
+        }
+      } else if (verbose) {
+        console.log(
+          `preserved ${name}/commands/${cmdName}.md (manual-handwritten)`,
+        )
+      }
       stats.commandsManualHandwrittenPreserved++
-      if (verbose) console.log(`preserved ${name}/commands/${cmdName}.md (manual-handwritten)`)
       continue
     }
 

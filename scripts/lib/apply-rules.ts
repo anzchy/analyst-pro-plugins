@@ -6,6 +6,7 @@ import {
   ALLOWED_TOOLS_PATCH,
   AGENT_PROMPT_CLEANSING,
   DROP_FIELDS,
+  MANAGED_BLOCKS,
   MODEL_MAP,
   PATH_REPLACEMENTS,
   WEB_TOOL_REPLACEMENTS,
@@ -89,6 +90,35 @@ export function patchAllowedTools(value: unknown): unknown {
   }
 
   return wasString ? filtered.join(', ') : filtered
+}
+
+/**
+ * Re-sync every managed block in `text` to its canonical value from
+ * `MANAGED_BLOCKS`. A managed region is delimited by HTML comment markers:
+ *
+ *   <!-- BEGIN MANAGED:<id> ...optional note... -->
+ *   ...inner text (replaced wholesale)...
+ *   <!-- END MANAGED:<id> -->
+ *
+ * The BEGIN/END marker lines are preserved verbatim; only the text between
+ * them is replaced with the canonical content. Idempotent — applying twice
+ * yields identical output. Text with no managed markers (or markers for an
+ * id not in MANAGED_BLOCKS) is returned unchanged.
+ */
+export function applyManagedBlocks(text: string): string {
+  let out = text
+  for (const [id, content] of Object.entries(MANAGED_BLOCKS)) {
+    const escId = id.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+    const re = new RegExp(
+      `(<!-- BEGIN MANAGED:${escId}[^\\n]*?-->)[\\s\\S]*?(<!-- END MANAGED:${escId} -->)`,
+      'g',
+    )
+    out = out.replace(
+      re,
+      (_m, begin: string, end: string) => `${begin}\n${content}\n${end}`,
+    )
+  }
+  return out
 }
 
 /** Apply path-replacements + web-tool-replacements to plugin command body text. */
