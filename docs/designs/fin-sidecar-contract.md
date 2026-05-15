@@ -100,6 +100,19 @@ does not parse and is simply not an anchor.
 else → write by exact first-column-label match against `items`. A label present in the
 sheet but absent from `items` is reported as **missing** (label drift), never silent.
 
+## 5b. Agent input field + canonical filename (added by WT-C, before WT-B starts)
+
+The parent↔agent dispatch field that carries the side-file path is
+**`侧文件输出路径`** (was `YAML 输出路径` — renamed so the name no longer lies
+about the format). Both callers must use this exact key:
+
+- `portfolio-tracking.md` Step 5.2 → `侧文件输出路径: ./portfolio/{slug}/current_quarter_financials.json`
+- WT-B `commands/financial-analyzer.md` → `侧文件输出路径: <target_folder>/.fin-cache/<sha8(abs_folder)>/<YYYYMMDD>.json`
+
+Canonical filename for the portfolio-tracking path is
+`current_quarter_financials.json` (`.json`, not `.yml`). The standalone
+command owns its own cache filename per Codex #13 (folder-scoped dir).
+
 ## 5. CSV branch parity (decision A4)
 
 stdlib `csv` only, mutate the target csv in place, **same `classify()` + same value
