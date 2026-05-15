@@ -196,7 +196,7 @@ PY
 
 - 顶层必须是 `{"_meta": {...}, "items": {...}}`；parent 的 `merge_financials.py` 只读 `items`，缺 `items` 会被判为格式损坏并 clean-fail（非 traceback）。
 - **`_meta` 键名硬约束（Smoke-test F1）**：`_meta` 必须**且只能**含这 5 个 key，键名**逐字**：`schema`、`company`、`quarter`、`period_date`、`unit`。**禁止增删改名**——特别是 `period_date` **不得**写成 `report_date` / `报告期日期` / `日期` 等任何变体，也**不要**额外加 `source_file` / `pages_read` / `generated_by` 等键。parent 用 `_meta.period_date` 做 `--date` 交叉校验；键名 drift 会让该校验静默失效。
-- `items` 的 key 必须**逐字**使用合并报表行项原文（如 `货币资金`、`应收账款净额`、`一、营业总收入`），含中文标点、括号、"："、罗马数字、阿拉伯数字编号等，全部 1:1 保留——parent 用精确字符串匹配历年表 A 列标签，任何差异都会导致写不入。
+- `items` 的 key 必须**逐字**使用合并报表行项原文（如 `货币资金`、`应收账款净额`、`一、营业总收入`），含中文标点、全角括号 `（）`、全角冒号 `：`、罗马数字、阿拉伯数字编号等，全部 1:1 保留。**这是硬性生产者要求，不得偷懒。** parent 的 `merge_financials.py` 先按 key **精确匹配**历年表 A 列；仅当精确不中时，才退回**全/半角标点归一化 + 小型别名表**兜底匹配（消费者侧防回归，见 `docs/designs/fin-sidecar-contract.md` §4）。兜底是安全网而非许可证：偏离原文的 key 仍会进 `NOTE: 归一化匹配` 审计行（提醒人核对），多个 key 归一化后同形且值不同则整行不写并报 `AMBIGUOUS`（零编造，绝不猜）。
 - `items` 的 value 单位**统一万元**，浮点数保留 2 位小数；与 markdown 中的同期数字必须**完全一致**。
 - **零编造（硬规则，Codex #15）**：当期某行无法从合并报表定位、读取失败或被除数为零 → 该 key 的 value **必须**写 JSON `null`；**严禁推算、估计、反推，或用其他期 / 其他行的数字填充**。不要省略该行，也不要写空字符串或 `0`。Parent 写表时会跳过 null 单元格。
 - `items` **包含**所有抽取行：detail 行 + 小计行（流动资产合计 等）+ 比率行（毛利率 等）。Parent 自行决定是否写入小计/比率到表格；agent 不做过滤。

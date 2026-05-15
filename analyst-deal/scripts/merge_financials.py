@@ -53,13 +53,75 @@ SKIP_EXACT = {
 }
 
 
+# --------------------------------------------------------------------------- #
+# Label canonicalization — for MATCHING ONLY. Display / reporting always keeps
+# the ORIGINAL label.
+#
+# Why: financial-analyzer extracts 合并报表 行项 with official full-width CJK
+# punctuation （）：，"" ; hand-maintained 历年表 first-column labels often use
+# half-width ()：,"" . The old exact-string match silently demoted a populated
+# detail row to "missing" on a single full/half-width slip (the exact drift the
+# report's `missing` column warns about — observed in the 矽昌通信 run, where 7
+# sidecar keys had to be hand-renamed). Folding punctuation + a tiny auditable
+# synonym table fixes this structurally so the fix survives plugin upgrades and
+# no longer needs per-run manual key surgery. Genuinely-absent labels are still
+# reported missing; ambiguous synonym collisions are surfaced, never guessed.
+# --------------------------------------------------------------------------- #
+_PUNCT_FOLD = str.maketrans({
+    "（": "(", "）": ")",
+    "：": ":",
+    "，": ",",
+    "　": " ",              # U+3000 ideographic space
+    "“": '"', "”": '"',   # “ ” → "
+    "‘": "'", "’": "'",   # ‘ ’ → '
+})
+
+
+def normalize_label(label: str) -> str:
+    """Punctuation-folded, outer-whitespace-stripped form used only to match."""
+    return label.translate(_PUNCT_FOLD).strip()
+
+
+# Known SEMANTIC synonyms (NOT mere punctuation): reading a 利润表 PDF the agent
+# may emit the standard "减：营业总成本" while a hand-kept 历年表 row reads
+# "二、营业总成本" — the same line. Add a group here (raw forms) ONLY for a
+# real, recurring synonym observed in practice. This is the single place a
+# non-identity label mapping is allowed — keep it short and auditable.
+LABEL_ALIASES: list[set[str]] = [
+    {"二、营业总成本", "减：营业总成本"},
+]
+
+_ALIAS_CANON: dict[str, str] = {}
+for _grp in LABEL_ALIASES:
+    _members = sorted(normalize_label(m) for m in _grp)
+    for _m in _members:
+        _ALIAS_CANON[_m] = _members[0]
+
+
+def canon_label(label: str) -> str:
+    """normalize_label + collapse a known synonym group to one representative."""
+    n = normalize_label(label)
+    return _ALIAS_CANON.get(n, n)
+
+
+# Constant sets compared in canonical space so a full/half-width variant of a
+# structural / subtotal label still classifies correctly (e.g. a sheet using
+# `一、经营活动产生的现金流量:` with a half-width colon stays `ignore`).
+_SILENT_IGNORE_N = {normalize_label(x) for x in SILENT_IGNORE}
+_SKIP_EXACT_N = {normalize_label(x) for x in SKIP_EXACT}
+
+
 def classify(label: str) -> str:
-    """ignore (structural, not missing) / skip (subtotal·ratio) / write (detail)."""
-    if label in SILENT_IGNORE:
+    """ignore (structural, not missing) / skip (subtotal·ratio) / write (detail).
+
+    Compared on the canonical form so punctuation drift cannot reclassify a row.
+    """
+    n = normalize_label(label)
+    if n in _SILENT_IGNORE_N:
         return "ignore"
-    if label.endswith("合计") or label.endswith("小计") or label.endswith("率"):
+    if n.endswith("合计") or n.endswith("小计") or n.endswith("率"):
         return "skip"
-    if label in SKIP_EXACT:
+    if n in _SKIP_EXACT_N:
         return "skip"
     return "write"
 
@@ -118,15 +180,44 @@ def decide_placement(anchors: list[tuple[int, datetime]], target: datetime) -> t
     return ("append", latest_col + 1)
 
 
+def _index_items(items: dict) -> tuple[dict, dict]:
+    """Build canon-key → (raw_key, value). Two DIFFERENT raw keys collapsing to
+    the same canon form with DIFFERENT values are ambiguous — recorded so the
+    canonical fallback never silently guesses between synonyms (zero-fab)."""
+    idx: dict[str, tuple[str, object]] = {}
+    ambiguous: dict[str, set[str]] = {}
+    for k, v in items.items():
+        ck = canon_label(k)
+        if ck in idx:
+            prev_k, prev_v = idx[ck]
+            if k != prev_k and v != prev_v:
+                ambiguous.setdefault(ck, {prev_k}).add(k)
+            continue  # keep first seen; an exact per-label hit still wins below
+        idx[ck] = (k, v)
+    return idx, ambiguous
+
+
 def plan_writes(labels: list[tuple[int, object]], items: dict):
     """The single source of truth for classify()+null handling — both the xlsx
     and csv branches call this so their detail-row values are identical by
     construction (parity test #6).
 
+    Matching order per label: exact (contract's primary, fast path) → canonical
+    (punctuation/alias-insensitive fallback). Canonical hits are recorded in
+    `audit["normalized"]` (surfaced, not silent — same transparency rule as
+    `missing`); unresolved synonym collisions go to `audit["ambiguous"]` and
+    are NOT written.
+
     labels: (row_id, first_column_label) in sheet order.
-    Returns (written, skipped, missing, writes) where writes = [(row_id, value)].
+    Returns (written, skipped, missing, writes, audit) where
+    writes = [(row_id, value)] and
+    audit = {"normalized": [(rid, sheet_label, sidecar_key)],
+             "ambiguous":  [(rid, sheet_label, [candidate_keys])]}.
     """
     written, skipped, missing, writes = [], [], [], []
+    normalized: list[tuple[int, str, str]] = []
+    ambiguous_hit: list[tuple[int, str, list[str]]] = []
+    canon_idx, ambiguous = _index_items(items)
     for rid, label in labels:
         if not label or not isinstance(label, str):
             continue
@@ -137,15 +228,26 @@ def plan_writes(labels: list[tuple[int, object]], items: dict):
             skipped.append((rid, label))
             continue
         # cls == "write"
-        if label not in items:
-            missing.append((rid, label))
-            continue
-        val = items[label]
+        if label in items:                       # exact — primary contract match
+            val, via = items[label], None
+        else:
+            ck = canon_label(label)
+            if ck in ambiguous:                  # synonym collision → never guess
+                ambiguous_hit.append((rid, label, sorted(ambiguous[ck])))
+                continue
+            hit = canon_idx.get(ck)              # punctuation/alias-insensitive
+            if hit is None:
+                missing.append((rid, label))
+                continue
+            val, via = hit[1], hit[0]
         if val is None:
             continue  # explicit null → skip cell, never "None"/"" /0 (test 14)
         writes.append((rid, val))
         written.append((rid, label))
-    return written, skipped, missing, writes
+        if via is not None:
+            normalized.append((rid, label, via))
+    audit = {"normalized": normalized, "ambiguous": ambiguous_hit}
+    return written, skipped, missing, writes, audit
 
 
 def _col_letter(c: int) -> str:
@@ -227,7 +329,7 @@ def merge_xlsx(target: str, items: dict, meta: dict, target_dt: datetime) -> lis
     labels = [
         (r, ws.cell(row=r, column=1).value) for r in range(2, ws.max_row + 1)
     ]
-    written, skipped, missing, writes = plan_writes(labels, items)
+    written, skipped, missing, writes, audit = plan_writes(labels, items)
     for r, val in writes:
         ws.cell(row=r, column=target_col).value = val
 
@@ -239,7 +341,7 @@ def merge_xlsx(target: str, items: dict, meta: dict, target_dt: datetime) -> lis
         )
 
     out += _report(target, target_col, target_dt, written, skipped, missing,
-                    letter=True)
+                    audit, letter=True)
     return out
 
 
@@ -292,7 +394,7 @@ def merge_csv(target: str, items: dict, meta: dict, target_dt: datetime) -> list
     rows[0][target_col] = target_dt.strftime("%Y-%m-%d")
 
     labels = [(ri, rows[ri][0]) for ri in range(1, len(rows))]
-    written, skipped, missing, writes = plan_writes(labels, items)
+    written, skipped, missing, writes, audit = plan_writes(labels, items)
     for ri, val in writes:
         rows[ri][target_col] = "" if val is None else str(val)
 
@@ -303,27 +405,41 @@ def merge_csv(target: str, items: dict, meta: dict, target_dt: datetime) -> list
         raise MergeError(f"ERR: 无法写回 csv {target}: {e}")
 
     out += _report(target, target_col + 1, target_dt, written, skipped, missing,
-                    letter=False)
+                    audit, letter=False)
     out.append(
         "NOTE: csv 无公式 — 小计/比率行留空，需手工补或转 xlsx 用 SUM 公式"
     )
     return out
 
 
-def _report(target, col, target_dt, written, skipped, missing, *, letter):
+def _report(target, col, target_dt, written, skipped, missing, audit, *, letter):
     head = f"{_col_letter(col)} (idx={col})" if letter else f"第 {col} 列"
+    norm = audit.get("normalized", []) if audit else []
+    amb = audit.get("ambiguous", []) if audit else []
     lines = [
         f"OK: {target} 已更新",
         f"  新列 {head} = {target_dt.date()}",
         f"  written(detail/non-subtotal) = {len(written)}",
+        f"    其中经全/半角或别名归一化匹配 = {len(norm)}（已自动对齐，非缺口）",
         f"  skipped(subtotal/ratio—需手工补或改 SUM 公式) = {len(skipped)}",
-        f"  missing(label 在表但不在 side-file，可能 financial-analyzer 标签 drift)"
+        f"  missing(label 在表但 side-file 中确实没有，非标点 drift)"
         f" = {len(missing)}",
     ]
     if missing:
         lines.append("  Missing labels:")
         for rid, lbl in missing:
             lines.append(f"    row {rid}: {lbl!r}")
+    if norm:
+        lines.append("  NOTE: 以下行经归一化后匹配 side-file 并写入（审计用）:")
+        for rid, lbl, src in norm:
+            lines.append(f"    row {rid}: 表标签 {lbl!r} ← side-file 键 {src!r}")
+    if amb:
+        lines.append(
+            "  AMBIGUOUS: 多个 side-file 键归一化后同形且值不同 — 未写入，"
+            "请人工消歧（zero-fab，绝不猜）:"
+        )
+        for rid, lbl, cands in amb:
+            lines.append(f"    row {rid}: {lbl!r} ↔ 候选键 {cands!r}")
     return lines
 
 

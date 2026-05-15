@@ -441,3 +441,91 @@ def test_21b_run_survives_report_date_drift(tmp_path):
     assert col(ws, 3, 2) == 343.09          # real value still merged
     # report_date == --date → synonym accepted, no spurious mismatch NOTE
     assert not any("不一致" in line for line in out)
+
+
+# --------------------------------------------------------------------------- #
+# 22. STRUCTURAL FIX — full/half-width punctuation drift no longer drops a row.
+#     Mirrors the real 矽昌通信 drift (sheet half-width vs side-file full-width)
+#     that previously needed 7 hand-renamed sidecar keys.
+# --------------------------------------------------------------------------- #
+def test_22_punctuation_drift_now_matches(tmp_path):
+    x = tmp_path / "h.xlsx"
+    make_xlsx(x, ["项目", datetime(2024, 12, 31)], [
+        ("实收资本(或股本)", [1]),                       # half-width in sheet
+        ('资产处置收益(损失以"-"号填列)', [2]),          # half-width parens+quotes
+        ("加:营业外收入", [3]),                          # half-width colon
+    ])
+    j = tmp_path / "s.json"
+    make_sidecar(j, {
+        "实收资本（或股本）": 11.0,                       # full-width in side-file
+        '资产处置收益（损失以"-"号填列）': 5.92,          # full-width parens+quotes
+        "加：营业外收入": 0.0,                            # full-width colon
+    })
+    out = mf.run(str(x), str(j), "2025-12-31")
+    ws = load(x)
+    assert col(ws, 3, 2) == 11.0
+    assert col(ws, 3, 3) == 5.92
+    assert col(ws, 3, 4) == 0.0                           # 0.0 still written
+    joined = "\n".join(out)
+    assert "missing" in joined  # the line is present...
+    assert "Missing labels:" not in joined                # ...but count is 0
+    assert "归一化匹配 = 3" in joined                    # surfaced, not silent
+
+
+def test_22b_classify_punctuation_resilient():
+    # full-width and half-width colon variants both stay structural/ignore
+    assert mf.classify("一、经营活动产生的现金流量：") == "ignore"
+    assert mf.classify("一、经营活动产生的现金流量:") == "ignore"
+    # canonicalization helpers
+    assert mf.normalize_label("实收资本（或股本）") == "实收资本(或股本)"
+    assert mf.canon_label("减：营业总成本") == mf.canon_label("二、营业总成本")
+
+
+# --------------------------------------------------------------------------- #
+# 23. semantic alias (NOT punctuation): 减：营业总成本 ⇄ 二、营业总成本
+# --------------------------------------------------------------------------- #
+def test_23_alias_matches(tmp_path):
+    x = tmp_path / "h.xlsx"
+    make_xlsx(x, ["项目", datetime(2024, 12, 31)], [("二、营业总成本", [9])])
+    j = tmp_path / "s.json"
+    make_sidecar(j, {"减：营业总成本": 497.06})
+    out = mf.run(str(x), str(j), "2025-12-31")
+    ws = load(x)
+    assert col(ws, 3, 2) == 497.06
+    assert "归一化匹配 = 1" in "\n".join(out)
+
+
+# --------------------------------------------------------------------------- #
+# 24. zero-fabrication: two side-file keys → same canon, different values →
+#     surfaced as AMBIGUOUS and NOT written (never guessed).
+# --------------------------------------------------------------------------- #
+def test_24_ambiguous_collision_not_fabricated(tmp_path):
+    x = tmp_path / "h.xlsx"
+    # sheet label equals NEITHER raw key (so exact path can't resolve it) but
+    # canon-collides with both → must refuse to guess.
+    make_xlsx(x, ["项目", datetime(2024, 12, 31)], [("投资收益（损失）", [1])])
+    j = tmp_path / "s.json"
+    make_sidecar(j, {"投资收益(损失)": 3.0, "投资收益（损失）　": 7.0})
+    out = mf.run(str(x), str(j), "2025-12-31")
+    ws = load(x)
+    assert col(ws, 3, 2) is None                          # nothing written
+    joined = "\n".join(out)
+    assert "AMBIGUOUS" in joined
+    assert "投资收益（损失）" in joined
+
+
+# --------------------------------------------------------------------------- #
+# 25. genuinely-absent label still reported missing (fix must NOT mask gaps)
+# --------------------------------------------------------------------------- #
+def test_25_genuine_absence_still_missing(tmp_path):
+    x = tmp_path / "h.xlsx"
+    make_xlsx(x, ["项目", datetime(2024, 12, 31)],
+              [("货币资金", [1]), ("存货", [2])])
+    j = tmp_path / "s.json"
+    make_sidecar(j, {"货币资金": 30.0})                   # 存货 truly absent
+    out = mf.run(str(x), str(j), "2025-12-31")
+    ws = load(x)
+    assert col(ws, 3, 3) is None
+    joined = "\n".join(out)
+    assert "Missing labels:" in joined and "存货" in joined
+    assert "归一化匹配 = 0" in joined                    # not a false normalize

@@ -106,8 +106,26 @@ does not parse and is simply not an anchor.
 
 `SILENT_IGNORE` (structural labels, not counted as missing), `SKIP_EXACT`
 (subtotals/derived left to formulas), suffix rule `*合计`/`*小计`/`*率` → skip,
-else → write by exact first-column-label match against `items`. A label present in the
+else → write by first-column-label match against `items`. A label present in the
 sheet but absent from `items` is reported as **missing** (label drift), never silent.
+
+- **Producer requirement is unchanged**: the agent MUST still emit `items` keys
+  **verbatim** from 合并报表 原文 (full-width `（）：，""`, leading `一、`,
+  numerals — see §1). No relaxation.
+- **Consumer robustness (矽昌通信 run, 2026-05-15)**: the agent is an LLM and
+  was observed to slip a single full↔half-width punctuation char, which under
+  pure exact-match silently demoted a *populated* detail row to `missing`
+  (needing 7 sidecar keys hand-renamed to recover). Matching is therefore now
+  **two-stage**: exact first (the contract's primary match, fast path), then a
+  **canonical** fallback that folds full/half-width punctuation and applies a
+  tiny, auditable `LABEL_ALIASES` synonym table (`merge_financials.py`
+  `normalize_label` / `canon_label`). Canonical hits are **surfaced**, not
+  silent — counted in the report and listed under a `NOTE:` ("经…归一化匹配").
+  When two distinct `items` keys collapse to the same canonical form with
+  different values, the row is left **unwritten** and flagged `AMBIGUOUS:`
+  (zero-fabrication — never guess between synonyms). This hardens the consumer
+  without relaxing the producer contract, same pattern as the F1 hardening
+  above. Tested by `test_merge_financials.py::test_22*`–`test_25`.
 
 ## 5b. Agent input field + canonical filename (added by WT-C, before WT-B starts)
 

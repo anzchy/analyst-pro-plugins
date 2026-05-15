@@ -263,8 +263,10 @@ python3 "${CLAUDE_PLUGIN_ROOT}/scripts/merge_financials.py" \
 
 1. `target_folder` 绝对路径 + 历年表绝对路径（或"未并表"原因）
 2. 缓存目录 `$CACHE_DIR`（本次 DISPATCH / REUSE / FAILED / SKIPPED 各期清单）
-3. 每期并表结果：写入列（列字母 / 索引 + 日期）+ written / skipped(小计·比率) /
-   missing(label drift；逐条列出具体 label，不静默)
+3. 每期并表结果：写入列（列字母 / 索引 + 日期）+ written（含「经全/半角或别名
+   归一化匹配」子计数）/ skipped(小计·比率) / missing(side-file 中确实没有，非
+   标点 drift；逐条列出，不静默) / `NOTE: 归一化匹配`（哪些行靠归一化对齐，审计
+   用）/ `AMBIGUOUS`（多 key 归一化同形异值 → 未写，需人工消歧）
 4. 提醒：
    - 小计 / 比率列待手工补或改 SUM 公式；csv 目标无公式
    - 下次重跑会按 mtime 守卫复用 `.fin-cache/`；如疑缓存陈旧，删对应
