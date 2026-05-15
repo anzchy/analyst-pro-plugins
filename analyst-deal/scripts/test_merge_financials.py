@@ -10,6 +10,10 @@ live in other work items:
     #19 folder-scoped cache, #20 period-collision  → WT-B (command layer)
   * #21 agent anti-fabrication wording             → WT-C (agent); the script
     side of it (null → skipped cell) IS tested here as #14.
+
+Smoke-test finding F1 (agent drifts _meta.period_date → report_date) hardened
+the script side of #21: _period_note now accepts the report_date synonym and
+emits a visible NOTE when neither key is present. Covered by test_21* below.
 """
 
 import csv
@@ -398,3 +402,42 @@ def test_17_quarterly_append_preserves_formula_column(tmp_path):
     assert col(ws, 4, 2) == 30.0
     assert col(ws, 5, 1) == "占比"                   # formula header shifted right
     assert col(ws, 5, 2) == "=C2/SUM(C:C)"           # formula text unchanged
+
+
+# --------------------------------------------------------------------------- #
+# 21. F1 (smoke-test finding): agent drifts _meta.period_date → report_date.
+#     Cross-check must survive the synonym, and never vanish silently when
+#     neither key is present.
+# --------------------------------------------------------------------------- #
+def test_21_period_note_drift_resilient():
+    t = datetime(2025, 12, 31)
+    # contract key, matches --date → silent OK
+    assert mf._period_note({"period_date": "2025-12-31"}, t) == []
+    # drifted to report_date, matches → accepted via synonym, silent OK
+    assert mf._period_note({"report_date": "2025-12-31"}, t) == []
+    # drifted to report_date, mismatched → mismatch NOTE still fires
+    note = mf._period_note({"report_date": "2024-09-30"}, t)
+    assert note and "不一致" in note[0]
+    # neither key (deeper drift / extra-keys-only) → VISIBLE note, not silent
+    note = mf._period_note({"source_file": "x.pdf"}, t)
+    assert note and "缺 period_date" in note[0]
+
+
+def test_21b_run_survives_report_date_drift(tmp_path):
+    """End-to-end: a sidecar carrying the real F1 drift (report_date + extra
+    keys, no period_date) still merges; the merge is driven by --date+items."""
+    x = tmp_path / "h.xlsx"
+    make_xlsx(x, ["项目", datetime(2024, 12, 31)], [("货币资金", [1])])
+    j = tmp_path / "s.json"
+    j.write_text(json.dumps({
+        "_meta": {"schema": "fin-sidecar/v1", "company": "矽昌通信",
+                  "quarter": "2025Q4", "report_date": "2025-12-31",
+                  "unit": "万元", "source_file": "x.pdf",
+                  "pages_read": "1-3", "generated_by": "financial-analyzer"},
+        "items": {"货币资金": 343.09},
+    }, ensure_ascii=False, indent=2), encoding="utf-8")
+    out = mf.run(str(x), str(j), "2025-12-31")
+    ws = load(x)
+    assert col(ws, 3, 2) == 343.09          # real value still merged
+    # report_date == --date → synonym accepted, no spurious mismatch NOTE
+    assert not any("不一致" in line for line in out)

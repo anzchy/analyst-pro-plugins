@@ -48,6 +48,15 @@ One file per reporting period. UTF-8, written with
   script decides which to write (subtotals/ratios are left to Excel formulas).
 - `_meta.period_date` — `YYYY-MM-DD`. The merge script cross-checks this against `--date`
   and emits a `NOTE:` if they differ (not fatal — supports legitimate manual reruns).
+  - **Producer requirement is unchanged**: the agent MUST emit exactly `period_date`
+    (one of the 5 fixed `_meta` keys; no rename, no extra keys).
+  - **Consumer robustness (smoke-test finding F1, 2026-05-15)**: the agent is an LLM
+    and was observed to drift the key to `report_date` + add stray keys. `_period_note`
+    therefore (a) accepts `report_date` as a tolerated synonym, and (b) when *neither*
+    key is present, emits a **visible** `NOTE:` (cross-check skipped) instead of
+    vanishing silently. This hardens the consumer without relaxing the producer
+    contract. Agent-side guard: `agents/financial-analyzer.md` Step 4.5 "_meta 键名
+    硬约束". Tested by `test_merge_financials.py::test_21*`.
 - `_meta.schema` — version tag. The script requires the top-level object to contain an
   `items` object; otherwise it exits with a clean `ERR:` (no traceback).
 

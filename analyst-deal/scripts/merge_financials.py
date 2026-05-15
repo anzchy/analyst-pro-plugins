@@ -157,8 +157,17 @@ def _col_letter(c: int) -> str:
 
 
 def _period_note(meta: dict, target: datetime) -> list[str]:
-    pd = meta.get("period_date")
-    if pd and pd != target.strftime("%Y-%m-%d"):
+    # Contract requires _meta.period_date. The agent is an LLM and is known to
+    # drift the key to report_date (smoke-test finding F1). Accept that one
+    # synonym so the cross-check survives drift; if NEITHER key is present the
+    # cross-check would otherwise vanish silently — emit a visible NOTE instead.
+    pd = meta.get("period_date") or meta.get("report_date")
+    if pd is None:
+        return [
+            "NOTE: side-file _meta 缺 period_date（也无 report_date）"
+            "，跳过报告期交叉校验 — agent 可能键名 drift，请人工核对该期日期"
+        ]
+    if pd != target.strftime("%Y-%m-%d"):
         return [
             f"NOTE: side-file _meta.period_date={pd} 与 --date={target.date()} 不一致"
             f"（按 --date 写入；如非有意重跑请核对）"

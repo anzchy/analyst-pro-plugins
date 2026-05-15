@@ -39,3 +39,7 @@ workspace/
 /deals/
 /intel/
 /research/
+
+# Python bytecode
+__pycache__/
+*.pyc
