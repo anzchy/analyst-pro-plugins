@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.3] - 2026-05-16
+
+Plugin versions: **`analyst-deal` 0.1.0 → 0.1.1**
+(plugin.json + marketplace.json). `analyst-dd` / `analyst-research` unchanged at `0.0.1`.
+
+### Added
+
+- **`/analyst-deal:competitor-enricher` 上市 / 拟 IPO 竞品深度档案** — 竞对档案块从一刀切（按非上市创业公司调优）扩成单 schema + 公司类型三分支（`listed` / `pre-ipo` / `non-listed`）。上市与拟 IPO 档新增四节必填：最近三年一期财务（报告原币种、不做汇率换算，缺期标 `截至 YYYY-MM 未披露`）、行业自适应芯片规格表（与本公司同赛道 Top 2-3 款）、管理层表（核心 3-5 人，董事长/CEO + CTO 必填）、客户与下游子节（具名客户 + 客户集中度）。公司类型由子 agent 首次股权检索零额外 jina 调用自动判定，可经可选输入 / `--type` 覆盖。
+  - 分层 jina 预算 `listed ≤16 / pre-ipo ≤12 / non-listed ≤8`，分档长度上限 `1800 / 1400 / 800` tokens，溢出压缩序固定为 产品方向段 → 管理层表 → 客户与下游子节（股权/财务/芯片规格表保持完整）。
+  - 财务文字解读边界与「不输出主观判断」硬规则配套：允许纯描述性趋势句（数值、YoY%、升/降/持平），禁因果归因与评价形容词（承压/恶化/强劲/反映竞争加剧等），schema 附允许/禁用词表。
+  - `knowledge/cn-data-sources.md` 新增上市 / 拟 IPO 母文档源：巨潮 cninfo、台湾 MOPS、公司 IR 年报 PDF、招股说明书申报稿，及财务/管理层/客户集中度/芯片规格的 source-priority 行。
+  - 新增仓库根 `CONTEXT.md`（领域术语表：三类竞品 / 同赛道业务段 / 客户集中度）与 `docs/adr/0001-competitor-card-single-schema-branched.md`（记录单 schema + 三分支决策及「竞品财务统一换算」被否备选）。
+  - 改动文件：`knowledge/competitor_card_schema.md`、`agents/competitor-enricher.md`、`commands/competitor-enricher.md`、`knowledge/cn-data-sources.md`。`portfolio-tracking` / `competitors.yml` 刻意不动，保持自动识别、限爆炸半径。
+
 ## [0.1.2] - 2026-05-15
 
 Plugin versions: **`analyst-deal` 0.0.2 → 0.1.0**
