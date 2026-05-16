@@ -36,6 +36,30 @@ WeChat articles aren't directly indexed by Google. Use Sogou's WeChat search as 
 
 WeChat search results expire (sogou caches roll over weekly); cite retrieval date in evidence ledger.
 
+### Listed / Pre-IPO filing sources（上市 / 拟 IPO 竞品专用）
+
+`competitor-enricher` 的 listed / pre-ipo 档位需要定期报告级数据（三年一期财务、管理层、客户集中度）。年报 / 招股书申报稿是**一份覆盖股权+财务+管理层+客户的母文档**——优先整本拿全（大 PDF 用分页 `jina read`），再补单点。
+
+**母文档（优先级 1）：**
+
+- A 股 / 港股年报、招股说明书申报稿、问询函回复：`jina search "{公司名} 年报 site:cninfo.com.cn" --json`（巨潮资讯网，证监会指定披露平台，免费）→ 取 PDF 链接 `jina read`
+- 台股年报 / 财报：`jina search "{公司名} annual report site:mops.twse.com.tw" --json`（公开资讯观测站 MOPS）或公司 IR 站 `jina read https://{公司域名}/.../annual_report.pdf`
+- 公司投资者关系页（最快拿到当年年报 PDF）：`jina search "{公司名} investor relations annual report" --json` → 官网 IR PDF
+
+**三年一期财务补点（优先级 2）：**
+
+- `jina search "{公司名} 营收 毛利率 site:eastmoney.com" --json`（东方财富，A 股财务摘要 + 研报）
+- `jina search "{公司名} 财务数据 site:10jqka.com.cn" --json`（同花顺）
+- 台股月营收 / 季报：`jina read https://mops.twse.com.tw/...`（MOPS 月营收公告，季报有时滞）
+
+**管理层 / 客户集中度（优先级 4，通常已在母文档内）：**
+
+- 管理层：年报 / 招股书的「董事、监事及高级管理人员」/「董事及经理人」章节——母文档拿到即可，无需额外调用
+- 客户集中度：年报 / 招股书的「前五大客户」/「主要客户」段；A 股招股书必披露前五大客户合计占比，台股年报披露程度不一
+- 具名客户补点：`jina search "{公司名} 客户 中标 site:36kr.com OR site:eastmoney.com" --json`
+
+> 反爬注意：cninfo / MOPS 的 PDF 通常 `jina read` 可直出 markdown；若返回 < 200 字或验证码页 → 按下方 Level 3 HITL。eastmoney 研报全文 PDF 多为付费，按 Level 3。
+
 ## Level 2 — Jina Read for known URLs
 
 When you already have a specific URL (from Level 1 results, founder-provided, or prior research), skip search and read directly:
@@ -115,6 +139,10 @@ When Levels 1-3 all fail (no public coverage, login attempt failed, paid wall, d
 | 政策 / 监管动态 | gov.cn site filters (Level 1) | (free, just slow) |
 | 微信公众号舆情 | sogou WeChat search → mp.weixin.qq.com (Level 1+2) | (most articles public) |
 | 上市公司公告 | eastmoney 研报摘要 (Level 1) | full PDFs via Level 3 |
+| 三年一期财务（上市/拟IPO竞品） | cninfo / MOPS 年报、招股书申报稿；eastmoney/同花顺财务摘要 (Level 1+2) | 年报全文 PDF via Level 3 |
+| 管理层（董事/经理人） | 年报「董监高」/招股书「董事及经理人」章节 (Level 1+2，母文档内) | (母文档拿到即可) |
+| 客户集中度（前五大客户） | A 股招股书必披露；年报「主要客户」段 (Level 1+2) | 具名客户 = founder-provided (Level 3) |
+| 芯片/产品规格 datasheet | 公司官网产品页 / datasheet PDF (Level 1+2) | 付费规格库 (Level 4) |
 | 论文 / 专利 | patenthub, cnki, arxiv (Level 1+2) | (free for abstracts) |
 | 行业研究 | tmtpost, 36kr industry features (Level 1+2) | paid databases (Level 3-4) |
 | 客户名单 / 供应链 | (rarely free) | founder-provided (Level 3) |

@@ -1,7 +1,7 @@
 ---
 name: competitor-enricher
 description: 独立调用 `competitor-enricher` 子 agent，对一组竞品公司并行调研股权 / 产品 / 融资，按 competitor_card_schema 输出每家一份 markdown 档案。当用户提到"竞品调研"、"竞对画像"、"竞争对手分析"且不需要完整投后报告时触发。
-argument-hint: '<公司1>[, <公司2>, <公司3> ...] [--out <目录>]'
+argument-hint: '<公司1>[, <公司2>, <公司3> ...] [--type listed|pre-ipo|non-listed] [--out <目录>]'
 model: claude-sonnet-4-6
 allowed-tools: Read, Write, AskUserQuestion, Bash, Bash(jina:*), Glob, Agent
 ---
@@ -63,12 +63,19 @@ allowed-tools: Read, Write, AskUserQuestion, Bash, Bash(jina:*), Glob, Agent
 
 ## Step 0: Parse `$ARGUMENTS`
 
-`$ARGUMENTS` 形态约定：以**空格、逗号或中文逗号**分隔的若干公司名；尾部可跟 `--out <目录>` 显式指定输出路径。
+`$ARGUMENTS` 形态约定：以**空格、逗号或中文逗号**分隔的若干公司名；尾部可跟 `--type <档位>` 与 `--out <目录>`（顺序不限）。
 
 示例：
-- `至成微 朗力 速通` → 三家公司，输出到默认目录
+- `至成微 朗力 速通` → 三家公司，类型 auto，输出到默认目录
 - `至成微, 朗力半导体, 速通智联` → 同上
+- `瑞昌 联发科 --type listed` → 两家强制按 listed 档位调研
 - `至成微 朗力 --out ./workspace/competitors/2026-05/` → 输出到指定目录
+
+### 0.0 解析 `--type`（可选）
+
+- 若 `$ARGUMENTS` 含 `--type listed|pre-ipo|non-listed` → 该值作用于**本次全部公司**，记为 `$FORCE_TYPE`；先从串里剔除该 token。
+- 无 `--type` → `$FORCE_TYPE = auto`（每家由子 agent 在 Step 2.0 自动判定档位）。
+- `--type` 取值非法 → 提示合法值 `listed|pre-ipo|non-listed` 后中止。
 
 ### 0.1 解析公司名列表
 
@@ -142,7 +149,8 @@ D2 — 调研计划确认
   ...
 输出目录：{$OUT_DIR}
 项目背景：{A 模式列出本公司+行业+主产品；B 模式标"纯客观调研"}
-预算：每家 ≤ 8 次 jina 调用，总计 ≤ {8 * N} 次
+公司类型：{$FORCE_TYPE；auto 时标"每家自动判定（listed/pre-ipo/non-listed）"}
+预算：{$FORCE_TYPE=listed → 每家 ≤16；pre-ipo → ≤12；non-listed → ≤8；auto → "按各家自动档位 8/12/16，上限 ≤ 16×N"}
 
 A) 开始（recommended）
 B) 取消
@@ -159,6 +167,7 @@ B) 取消
 ```yaml
 竞对名: {name}
 档案块编号: {从 1 开始的整数，按 Step 0.1 解析顺序}
+公司类型: {$FORCE_TYPE}   # listed|pre-ipo|non-listed|auto；auto 时子 agent 在 Step 2.0 自动判定
 项目背景: {Step 1 收集的项目背景}
 ```
 
