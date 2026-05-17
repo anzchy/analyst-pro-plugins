@@ -81,6 +81,14 @@ export const PLUGIN_MANIFEST: Record<string, PluginDefinition> = {
         source: 'analyst-deal/commands/competitor-enricher.md',
         transform: 'manual-handwritten',
       },
+      // Standalone /financial-analyzer (added in b5c5cdd, PR1). Was committed
+      // to analyst-deal/commands/ but never registered here, so every
+      // `npm run build:plugins` cleanStaleCommands() deleted it. Registered
+      // as manual-handwritten (self-reference source) like its siblings.
+      'financial-analyzer': {
+        source: 'analyst-deal/commands/financial-analyzer.md',
+        transform: 'manual-handwritten',
+      },
     },
     // Union of all knowledge files referenced by:
     //   - deal-analyst.ts (8 files: bp/dd/ic/past_ic/red/report/tech)
