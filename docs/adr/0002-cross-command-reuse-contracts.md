@@ -43,5 +43,63 @@ target_folder；不得把多公司 standalone 抽取灌进单一共享根的 `.f
 Step 5.1.5（reader 双兼容）。仍须 source↔runtime cache 双端同步方在运行位生效。
 
 **未触动**：`.fin-cache` 名本身、`<YYYYMMDD>` token 派生（仍由 financial-analyzer
-1.2.2 硬闸门保证取纠正后报告期）、JSON schema、competitor 复用链、严格匹配 +
-鲜度回退语义。
+1.2.2 硬闸门保证取纠正后报告期）、JSON schema、严格匹配 + 鲜度回退语义。
+（竞对复用链由下方同日 competitor 修订条目单独处理。）
+
+## Amendment 2026-05-17 — 竞对档案扁平化（`./competitors/<name-slug>.md`，去 NN 前缀）
+
+**变更**：契约 (2) 竞对档案块文件名由 `{NN}_{name-slug}.md` 改为 `{name-slug}.md`
+（去 `{NN}_` 数字前缀）；规范产出/读取位统一为目标文件夹下浅层 `./competitors/`。
+
+**动因**：与 fin-cache 扁平化同一取舍——浅路径、单一规范位置、写=读同址。`{NN}_`
+前缀原仅供目录排序，但报告章节四的顺序由 `competitors.yml` 迭代序决定、Step 8
+编号连续性也对 `competitors.yml` 校验，**均与文件名无关**，故去前缀不影响排序。
+
+**向后兼容（不孤立旧产物，零迁移）**：reader（`portfolio-tracking.md` Step 6.0）
+主匹配规则本就是「basename 小写**包含** name-slug」，对前缀天然不敏感——
+`英伟达.md` 与旧 `01_英伟达.md` 同等命中。默认 `档案搜索路径` 改为
+`[./competitors/, ./, ./portfolio/{slug}/competitors/]`：新规范位居首，后两条
+保留以复用历史散落产物。
+
+**writer 行为变更**：standalone `/competitor-enricher` Step 0.2 **去掉 D0b
+输出目录 AskUserQuestion**，静默默认 `$OUT_DIR=./competitors/`（`--out <dir>`
+仍可覆盖）；`portfolio-tracking` Step 6.1(a) 自身 per-competitor 缓存也改写
+`./competitors/<name-slug>.md`（放弃「全部路径归一到 ./portfolio/{slug}/」追溯
+取舍，换写=读单一规范位，与本日 fin-cache 取舍一致）。
+
+**同步落点**：本 ADR + `commands/competitor-enricher.md`（0.2/3.1/3.2/Step4）+
+`commands/portfolio-tracking.md`（Step 2 默认路径+yml 模板、Step 6.0 prose+匹配
+规则注、Step 6.1a 写入位、6.2 来源、中断恢复注、Step 8 来源表、Step 9 回写、
+overview、mkdir）。`competitor_card_schema.md` 不动（只钉内容不钉文件名）。
+原 ADR「`competitor-enricher.md` 不动」的范围声明被本日两条修订一并取代。
+仍须 source↔runtime cache 双端同步方在运行位生效。
+
+**未触动**：`competitor_card_schema.md` 内容契约、有序回退链/D5 闸门语义、
+jina 配额保护逻辑、Output 逐家来源标注。
+
+## Amendment 2026-05-17 — zsh-nomatch 加固（end-to-end glob 扫描修复）
+
+**性质**：实现加固，**非契约变更**——路径/命名/复用语义不变；仅把命令内
+"用 glob 列文件"的 Bash 改成 `find … -name`，使其在 zsh 下行为正确。
+
+**动因**：本仓库 skill/command 内的 Bash 经 Bash 工具在 **zsh**（非 bash）下执行。
+`ls "$DIR"/*pat`（尤其多 pattern `ls a* b* c*`）只要**任一** glob 未匹配，zsh
+在 `ls` 运行前整体报 `no matches found` 并**丢弃已匹配兄弟 pattern**；`2>/dev/null`
+抑制不了 shell 自身的 glob 展开报错。沿 `/portfolio-tracking` end-to-end 追踪
+发现这是独立于 period-key / sha8 两条已修成因的**第三类**"全流程误判无输入"
+源：最常见的"只有 `XXX合并报表.pdf`、无 `财务报表.pdf`/`YYYYMMDD.pdf` 兄弟"
+命名下，输入发现扫描整体返回空 → 误判无财务输入 / `financial-analyzer` 误触
+"未发现财报 PDF → 中止"。
+
+**落点（全部 `ls glob → find -maxdepth -name`，zsh 安全、目录空/缺 rc 安全）**：
+`portfolio-tracking.md` Step 2 输入发现 5 块扫描 + Step 5.5.1 历年 xlsx 检测
++ Step 6.0 竞对匹配辅助；`financial-analyzer.md` Step 1.1 PDF/历年表扫描。
+Step 5.1.5 fin-cache reader 已于 fin-cache 扁平化条目内按同法修复（`find`
+枚举旧嵌套层）。两命令各加一条"必须用 find 不能用 ls glob"的 prose 警示。
+
+**同步落点**：`commands/portfolio-tracking.md` + `commands/financial-analyzer.md`
+（均仅 Bash 块，无契约面）；项目记忆 `skill-bash-runs-under-zsh-nomatch`。
+`competitor-enricher.md` 无此模式（其文件写入用显式路径，不 glob 扫描）。
+仍须 source↔runtime cache 双端同步方在运行位生效。
+
+**未触动**：任何路径/命名/复用/闸门契约；JSON schema；ADR 已冻结条款。

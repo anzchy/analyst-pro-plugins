@@ -107,15 +107,25 @@ PDF/Excel），故无 jina / 网络检查。
 
 ## Step 1: 扫描 + 报告期识别 + 缓存探测
 
-### 1.1 扫描文件（Bash glob，排除 Excel 锁文件 `~$`）
+### 1.1 扫描文件（`find` 枚举，排除 Excel 锁文件 `~$`）
+
+> **必须用 `find`，不能用 `ls "$TF"/*pat`。** 本命令 Bash 在 zsh 下执行：
+> 多 pattern 的 `ls a* b* c*` 只要**任一** glob 未匹配，zsh 在 `ls` 运行前
+> 整体报 `no matches found` 并丢弃已匹配兄弟 pattern（`2>/dev/null` 抑制不了
+> shell 的 glob 展开报错）。即"只有 `XXX合并报表.pdf`、无 `财务报表.pdf` /
+> `YYYYMMDD.pdf` 兄弟"这一最常见命名下，扫描整体返回空 → 误触下方"未发现
+> 财报 PDF → 中止"。`find … -name` 自处理通配、目录空/缺均 rc 安全。
+> 详见 ADR 0002 同款修复与记忆 `skill-bash-runs-under-zsh-nomatch`。
 
 ```bash
 TF="$TF"
-ls -la "$TF"/*财务报表*.pdf "$TF"/*合并报表*.pdf \
-       "$TF"/[0-9][0-9][0-9][0-9][0-1][0-9][0-3][0-9]*.pdf 2>/dev/null
-# 历年表：--xlsx 优先；否则扫描
-ls -la "$TF"/*历年财务报表*.xlsx "$TF"/*历年财务报表*.csv \
-       "$TF"/*财务报表*.xlsx 2>/dev/null | grep -v '/~\$'
+find "$TF" -maxdepth 1 -type f \( \
+       -name '*财务报表*.pdf' -o -name '*合并报表*.pdf' \
+    -o -name '[0-9][0-9][0-9][0-9][0-1][0-9][0-3][0-9]*.pdf' \) 2>/dev/null
+# 历年表：--xlsx 优先；否则扫描（grep -v '/~\$' 去 Excel 锁文件）
+find "$TF" -maxdepth 1 -type f \( \
+       -name '*历年财务报表*.xlsx' -o -name '*历年财务报表*.csv' \
+    -o -name '*财务报表*.xlsx' \) 2>/dev/null | grep -v '/~\$'
 ```
 
 - 无任何财报 PDF → 中止："target_folder 下未发现财报 PDF（*财务报表*.pdf / *合并报表*.pdf / YYYYMMDD*.pdf）。"

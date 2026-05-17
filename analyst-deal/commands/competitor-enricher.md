@@ -91,18 +91,12 @@ D0a — 缺少公司名
 
 ### 0.2 解析输出目录
 
-- 如 `$ARGUMENTS` 含 `--out <dir>` → 直接采用
-- 否则触发 D0b：
-
-```
-D0b — 输出目录
-ELI10: 每家竞对会生成一份独立 markdown，存到下面这个目录。默认就是当前工作目录根。
-Recommendation: 默认即可；如分析师习惯把竞对档案归档到子文件夹，选 B 自定义。
-A) 当前工作目录根 ./（recommended）
-B) 自定义路径（接下来文本输入）
-```
-- 选 B → AskUserQuestion 文本框收路径
-- 决定后的最终路径记为 `$OUT_DIR`；用 `mkdir -p "$OUT_DIR"` 确保存在；写测试文件验证可写
+- 如 `$ARGUMENTS` 含 `--out <dir>` → 直接采用为 `$OUT_DIR`
+- 否则 **静默默认 `$OUT_DIR = ./competitors/`**（不弹问题；ADR 0002 2026-05-17
+  修订：竞对档案规范位置 = 目标文件夹下浅层 `./competitors/`，与 fin-cache 扁平
+  化同一取舍——浅路径、单一规范位置、`/portfolio-tracking` 直接从此读取）。
+- 最终路径记为 `$OUT_DIR`；`mkdir -p "$OUT_DIR"` 确保存在；写测试文件验证可写
+  （不可写 → 报错中止，提示用户改用 `--out <可写目录>`）。
 
 ## Step 1: Collect Project Context
 
@@ -177,13 +171,16 @@ B) 取消
 
 每批并行返回后，对该批内每家**立即写盘**，再启动下一批：
 
-- `file_path`: `${OUT_DIR}/{NN}_{name-slug}.md`
-  - `NN` 为档案块编号 0 填充至两位（`01`、`02`、…），保证文件名按编号自然排序
+- `file_path`: `${OUT_DIR}/{name-slug}.md`
   - `name-slug`：竞对名按"保留中文，去空格 + 特殊字符"规则做 slug
-  - 例：`./workspace/competitors/2026-05/02_朗力半导体.md`
+  - 例：`./competitors/朗力半导体.md`
+  - ADR 0002 2026-05-17 修订：**去掉 `{NN}_` 数字前缀**。原 NN 仅为目录排序，
+    报告章节四的顺序由 `competitors.yml` 迭代序决定、与文件名无关，故去前缀
+    不影响排序；`/portfolio-tracking` 读取侧匹配规则本就「basename 含 slug」、
+    对前缀不敏感，去前缀向后兼容。
 - `content`: agent 返回的完整 markdown card 原样写入，**不**加 frontmatter / 不加包裹
 
-如目标文件已存在 → 写到 `{NN}_{name-slug}-{ISO timestamp}.md`，**不覆盖原文件**。
+如目标文件已存在 → 写到 `{name-slug}-{ISO timestamp}.md`，**不覆盖原文件**。
 
 ### 3.2 释放工作内存
 
@@ -194,10 +191,10 @@ B) 取消
 向用户输出：
 
 1. 输出目录绝对路径 `$OUT_DIR`
-2. 本次写入的文件清单（按编号顺序），每行：`{NN}_{name-slug}.md  —  {summary}`
+2. 本次写入的文件清单（按解析顺序），每行：`{name-slug}.md  —  {summary}`
 3. 如有家在子 agent 内部触发 `数据缺口` / `jina 不可用` / `公司名歧义` → 显式列出该家及对应失败原因
 4. 是否需要把这些档案聚合进 `/analyst-deal:portfolio-tracking` 的主报告 — 一句提示：
-   "如需把这些档案纳入完整投后报告，可后续运行 `/analyst-deal:portfolio-tracking <公司名> <季度>`，并把生成的 markdown 文件挪到 `./portfolio/{slug}/competitors/` 复用（命名 `{NN}_{name-slug}.md`，主命令会自动跳过已缓存的家）。"
+   "如需把这些档案纳入完整投后报告，后续运行 `/analyst-deal:portfolio-tracking <公司名> <季度>` 即可——主命令默认就从 `./competitors/*.md` 读取并复用这些档案（自动跳过已缓存的家），无需移动文件。"
 
 ## Style Contract
 
