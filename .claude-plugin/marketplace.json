@@ -4,7 +4,7 @@
   "plugins": [
     {
       "name": "analyst-deal",
-      "version": "0.1.1",
+      "version": "0.1.2",
       "description": "Deal-flow workflows for VC investors: project triage, IC memo synthesis, market intel scanning, Codex-powered report polish, quarterly post-investment tracking",
       "source": "./analyst-deal",
       "category": "investment",
