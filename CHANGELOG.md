@@ -7,6 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.5] - 2026-05-17
+
+Plugin versions: **`analyst-deal` 0.1.2 → 0.1.3**
+(plugin.json + marketplace.json). `analyst-dd` / `analyst-research` unchanged at `0.0.1`.
+
+### Fixed
+
+- `/financial-analyzer` could key the `.fin-cache` side-file on a filename delivery-date instead of the corrected reporting period. The period-key gate now hard-stops unless the cache key is a quarter-end date — the only exception being a non-quarter special report the user explicitly confirmed in the D1 prompt (an auditable flag the model cannot self-set), closing a residual bypass where a delivery-date was relabelled as user-supplied.
+- `/portfolio-tracking` and `/financial-analyzer` directory scans used shell globs that hard-error under zsh when a pattern matches nothing (`no matches found`, not suppressible by `2>/dev/null`), causing false "no financial input" / "no PDF found" aborts. All such scans now use `find`.
+- `/competitor-enricher` instructed bare-text `AskUserQuestion` calls (missing-company-name path and project-context A-branch) that hard-fail without an options array; both are now well-formed two-option questions with free text via the auto "Other" input.
+
+### Changed
+
+- `.fin-cache` side-file path flattened to `<folder>/.fin-cache/<YYYYMMDD>{.json,_section.md}` (sha8 sub-directory removed). The reader stays backward-compatible with the old nested layout, so moving a target folder no longer silently invalidates the cache and forces a PDF re-read.
+- Competitor archive cards flattened to `./competitors/<name-slug>.md` (dropped the `NN_` numeric prefix and the output-directory prompt); `/portfolio-tracking` reuses them from that canonical location, prefix-insensitive for back-compat.
+- `/financial-analyzer` is now registered in the plugin build manifest, so it is no longer deleted on every `npm run build:plugins`.
+
+---
+
 ## [0.1.4] - 2026-05-17
 
 Plugin versions: **`analyst-deal` 0.1.1 → 0.1.2**
@@ -139,7 +158,8 @@ Plugin versions: **`analyst-deal` 0.0.2 → 0.1.0**
 - Knowledge sensitivity audit (TODO-4) verified all 16 unique knowledge files contain zero LP names, fund-level data, cap-table specifics, real portfolio company names paired with internal judgments, paid database摘录, or personal info. Repo is structurally clean for public release.
 - Repository remains **private** at v0.1.0 release; visibility flip is the maintainer's call.
 
-[Unreleased]: https://github.com/anzchy/analyst-pro-plugins/compare/v0.1.4...HEAD
+[Unreleased]: https://github.com/anzchy/analyst-pro-plugins/compare/v0.1.5...HEAD
+[0.1.5]: https://github.com/anzchy/analyst-pro-plugins/compare/v0.1.4...v0.1.5
 [0.1.4]: https://github.com/anzchy/analyst-pro-plugins/compare/v0.1.3...v0.1.4
 [0.1.3]: https://github.com/anzchy/analyst-pro-plugins/compare/v0.1.2...v0.1.3
 [0.1.2]: https://github.com/anzchy/analyst-pro-plugins/compare/v0.1.1...v0.1.2
