@@ -7,6 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.4] - 2026-05-17
+
+Plugin versions: **`analyst-deal` 0.1.1 → 0.1.2**
+(plugin.json + marketplace.json). `analyst-dd` / `analyst-research` unchanged at `0.0.1`.
+
+### Added
+
+- **`/analyst-deal:portfolio-tracking` 复用 standalone 产物，不再每季无条件 re-dispatch / re-jina** — 分析师真实工作流是先在文档根目录跑 standalone `/analyst-deal:financial-analyzer` 与 `/analyst-deal:competitor-enricher`，再跑投后报告。本版让 `portfolio-tracking` 先复用这些既有产物，命中即省一次子 agent / 一次 jina 调研。两条原本是「命令内部实现细节」的产物路径被提升为**冻结的跨命令契约**（新增 `docs/adr/0002-cross-command-reuse-contracts.md`）：fin-cache 留底 `<folder>/.fin-cache/<sha8(abs_folder)>/<YYYYMMDD>{_section.md,.json}`、竞对档案块 `{NN}_{name-slug}.md`。
+  - **Step 2**：`competitors.yml` 顶层新增有序全局 `档案搜索路径`（默认 `[./, ./portfolio/{slug}/competitors/]`），旧版文件缺该键时静默采用默认。
+  - **Step 5.1.5（财务复用闸门）**：静默预扫 CWD 根与 slug 目录，按 `{季度}` 派生的报告期日期 token **严格精确匹配** `<YYYYMMDD>_section.md` 且校验留底 mtime 晚于合并报表（鲜度）；命中弹恰一个批级 `D4`（复用 / 重抽），miss 或陈旧**静默回退**原 dispatch，不报 `InputValidationError`、不弹计划外问题。`sha8` 公式与 standalone 完全一致。
+  - **Step 5.5（喂历年表）**：复用时把 fin-cache JSON 侧文件拷为 `current_quarter_financials.json` 照常并表；仅有 `_section.md`、无 JSON → 跳过 5.5 并在 Output 标注「未同步历年表」。
+  - **Step 6.0（竞对有序回退）**：对每家竞对按 `档案搜索路径` 逐路径回退（文件名含 name-slug、大小写不敏感、允许 `NN_` 前缀；歧义则 `#### …公司名` 表头兜底），全链未命中才走 jina；先跑一遍匹配并以恰一个批级 `D5`（按预览走 / 改路径重扫 / 全 jina）呈现每路径命中数 + 将走 jina 的逸名预览。
+  - **Step 8 / Output**：逐家标注来源路径 + card 内查询日期 + 是否含 `jina 不可用 / 数据缺口 / 数据完整性声明 / 未核验` 关键词（原样复用、不阻断，治理责任经 HITL 移交分析师）。**Step 9** 把确认后的 `档案搜索路径` 回写 `competitors.yml`（stdlib，无 PyYAML）。
+  - 设计经一轮 `/grill-with-docs` 锁定；`financial-analyzer.md` / `competitor-enricher.md` / agents / `docs/designs/fin-sidecar-contract.md`（FROZEN）不动。新增 `CONTEXT.md` 财务复用 / 竞对复用术语表条目；被取代的 standalone 计划归档到 `docs/plans/archive/`。
+- **项目内 `marketplace-release` skill** — `gh-release` 的本仓库变体，新增 model-driven Step 0：从「上次发布以来的提交 ∪ 工作区未提交改动」按 owning artifact 提议每个 `plugin.json` / `marketplace.json` 镜像条目 + 仓库 tag/CHANGELOG 的逐项 semver bump（命令/agent 改动上卷到所属 plugin）；含 `--bump-only`（只 bump + 本地 tag，不 push、不发布）模式。
+
+### Fixed
+
+- **D 闸门绑定 `AskUserQuestion` schema + 文件名日期 vs 报告期交叉校验** — `InputValidationError: questions is missing` 根因：D 闸门（D0/D1/D-COLLIDE、D1/D2/D3）写成 ASCII 正文、未映射到 `AskUserQuestion` 工具 schema，模型把围栏当叙述输出、调用工具时漏 `questions`。触发点是 Step 1.2 把文件名 8 位 token（`20260429` = 交付日）当成报告期，而真实报告期（`2026-03-31`）只在 PDF 标题里，引出一个脱离 schema 的计划外确认。修复：`financial-analyzer.md` 增「AskUserQuestion 调用契约」硬规则 + 1.2.1 文件名日期/报告期交叉校验（读 PDF 标题、归一到期末日；cache/sidecar/`--date` 用校正后的报告期），并把校正折叠进单次 D1；`portfolio-tracking.md` 同步同一契约（含文本录入类仍需 ≥2 options）——D1/D2/D3 有同一潜在缺陷。本版的「严格期末日匹配」复用防线是该交叉校验的延伸。
+
 ## [0.1.3] - 2026-05-16
 
 Plugin versions: **`analyst-deal` 0.1.0 → 0.1.1**
@@ -119,7 +139,9 @@ Plugin versions: **`analyst-deal` 0.0.2 → 0.1.0**
 - Knowledge sensitivity audit (TODO-4) verified all 16 unique knowledge files contain zero LP names, fund-level data, cap-table specifics, real portfolio company names paired with internal judgments, paid database摘录, or personal info. Repo is structurally clean for public release.
 - Repository remains **private** at v0.1.0 release; visibility flip is the maintainer's call.
 
-[Unreleased]: https://github.com/anzchy/analyst-pro-plugins/compare/v0.1.2...HEAD
+[Unreleased]: https://github.com/anzchy/analyst-pro-plugins/compare/v0.1.4...HEAD
+[0.1.4]: https://github.com/anzchy/analyst-pro-plugins/compare/v0.1.3...v0.1.4
+[0.1.3]: https://github.com/anzchy/analyst-pro-plugins/compare/v0.1.2...v0.1.3
 [0.1.2]: https://github.com/anzchy/analyst-pro-plugins/compare/v0.1.1...v0.1.2
 [0.1.1]: https://github.com/anzchy/analyst-pro-plugins/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/anzchy/analyst-pro-plugins/releases/tag/v0.1.0
