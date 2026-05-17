@@ -1,13 +1,17 @@
 # Contract: financial side-file (JSON v1) + `merge_financials.py` CLI
 
 Status: **FROZEN** 2026-05-15 — do not change after WT-B/WT-C start consuming it.
+**AMENDED 2026-05-17 (path only)** by `docs/adr/0002-cross-command-reuse-contracts.md`
+§Amendment: cache dir flattened `→ <target_folder>/.fin-cache/<YYYYMMDD>{.json,_section.md}`
+(sha8 subdir removed). JSON *shape* unchanged. Reader keeps backward-compat with the
+legacy `.fin-cache/<sha8>/…` nesting. See annotations on the path lines below.
 Source of decision: `/plan-eng-review` of `docs/plans/financial-analyzer-standalone-command.md`
 (decision A2: YAML → stdlib JSON; PyYAML is absent in `web-scrape` and base).
 
 This file is the single interface contract shared by three work items:
 
 - **WT-A** — `analyst-deal/scripts/merge_financials.py` (this PR): *reads* the side-file, *implements* the CLI.
-- **WT-B** — `analyst-deal/commands/financial-analyzer.md`: *invokes* the CLI; owns where the side-file is written (`.fin-cache/<sha8(abs_folder)>/<YYYYMMDD>.json`, Codex #13) and the `--extract-only` short-circuit (Codex #7).
+- **WT-B** — `analyst-deal/commands/financial-analyzer.md`: *invokes* the CLI; owns where the side-file is written (~~`.fin-cache/<sha8(abs_folder)>/<YYYYMMDD>.json`, Codex #13~~ → **AMENDED 2026-05-17: `.fin-cache/<YYYYMMDD>.json`, flat, no sha8 — ADR 0002 §Amendment**) and the `--extract-only` short-circuit (Codex #7).
 - **WT-C** — `analyst-deal/agents/financial-analyzer.md` Step 4.5: *writes* the side-file in this JSON shape (replaces `yaml.safe_dump`); adds the anti-fabrication line (Codex #15).
 
 WT-C must land atomically with the `portfolio-tracking` Step 5.5.2 rewire — splitting them
@@ -134,11 +138,15 @@ The parent↔agent dispatch field that carries the side-file path is
 about the format). Both callers must use this exact key:
 
 - `portfolio-tracking.md` Step 5.2 → `侧文件输出路径: ./portfolio/{slug}/current_quarter_financials.json`
-- WT-B `commands/financial-analyzer.md` → `侧文件输出路径: <target_folder>/.fin-cache/<sha8(abs_folder)>/<YYYYMMDD>.json`
+- WT-B `commands/financial-analyzer.md` → `侧文件输出路径: <target_folder>/.fin-cache/<YYYYMMDD>.json`
+  **(AMENDED 2026-05-17 — ADR 0002 §Amendment; was `<target_folder>/.fin-cache/<sha8(abs_folder)>/<YYYYMMDD>.json`)**
 
 Canonical filename for the portfolio-tracking path is
 `current_quarter_financials.json` (`.json`, not `.yml`). The standalone
-command owns its own cache filename per Codex #13 (folder-scoped dir).
+command owns its own cache filename (~~Codex #13, sha8 folder-scoped dir~~ →
+flat per-folder dir; isolation now from `.fin-cache` living inside the company
+folder, not sha8 — ADR 0002 §Amendment; reader backward-compat keeps legacy
+nesting).
 
 ## 5. CSV branch parity (decision A4)
 

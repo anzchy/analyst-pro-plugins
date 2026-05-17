@@ -397,12 +397,19 @@ Write 完成后向用户简短打印一行："已建立报告骨架：`$REPORT_P
 
 ### 5.1.5 fin-cache 复用预扫 + 复用闸门
 
-分析师常在**文档根目录**先跑 standalone `/analyst-deal:financial-analyzer`，
-再跑本投后命令。standalone 会留底 `<folder>/.fin-cache/<sha8(abs_folder)>/<YYYYMMDD>{_section.md,.json}`
-（`_section.md`=成品章节三(二) prose，`.json`=`fin-sidecar/v1` 结构化数据）。
-这两个产物是**冻结的跨命令契约**（ADR `docs/adr/0002-cross-command-reuse-contracts.md`；
-`.json` 由 `docs/designs/fin-sidecar-contract.md` 冻结，本命令**不得**改其命名 /
-SHA8 公式）。命中即可复用，省一次 financial-analyzer 子 agent。
+分析师常在某文件夹先跑 standalone `/analyst-deal:financial-analyzer`，再跑本
+投后命令。standalone 留底于 **扁平** `<folder>/.fin-cache/<YYYYMMDD>{_section.md,.json}`
+（ADR 0002 2026-05-17 修订：移除 sha8 子目录；`_section.md`=成品章节三(二) prose，
+`.json`=`fin-sidecar/v1` 结构化数据）。这两个产物是**冻结的跨命令契约**（ADR
+`docs/adr/0002-cross-command-reuse-contracts.md`；`.json` 由
+`docs/designs/fin-sidecar-contract.md` 冻结）。命中即可复用，省一次
+financial-analyzer 子 agent。
+
+**向后兼容**：reader 同时接受新扁平路径与旧 `.fin-cache/<sha8>/<YYYYMMDD>.*`
+嵌套留底（旧缓存不孤立）。旧嵌套层用 glob `*/` 通配——**不重算 sha8**，正是为
+消除「移动文件夹后绝对路径变→sha8 变→静默 miss 重读 PDF」的脆弱点。注意 `*/`
+只通配已废弃的 sha8 目录层，**token 文件名仍须精确** `<YYYYMMDD>_section.md`，
+不是放宽成模糊匹配。
 
 **先静默预扫，命中才弹恰一个批级 AskUserQuestion；miss / 陈旧一律静默回退
 Step 5.2，不报错、不弹任何问题**（严格匹配是「文件名日期 ≠ 报告期」bug 类的
@@ -417,17 +424,31 @@ PDF="{Step 3 选定的本期合并报表路径}"
 REUSE_HIT=""; REUSE_JSON=""; REUSE_FOLDER=""
 # 默认 CWD 根 ./ 优先，备选 ./portfolio/{slug}/；两者都静默预扫，命中优先取 ./
 for CAND in "./" "./portfolio/{slug}/"; do
-  [ -d "$CAND" ] || continue
+  [ -d "$CAND/.fin-cache" ] || continue
   ABS="$(cd "$CAND" 2>/dev/null && pwd)" || continue
-  # sha8 公式必须与 standalone financial-analyzer 完全一致（勿改）
-  SHA8="$(printf '%s' "$ABS" | shasum -a 256 | cut -c1-8)"
-  SECTION="$CAND/.fin-cache/$SHA8/${TOKEN}_section.md"
-  # 严格 token 精确匹配：文件名须正好是 <TOKEN>_section.md（不做任何模糊 / 唯一性兜底）
-  [ -f "$SECTION" ] || continue
-  # 鲜度：留底 mtime 须晚于本期合并报表；PDF 缺失/不可读 → 无法判定 → 按陈旧处理（静默回退）
-  if [ -n "$PDF" ] && [ -f "$PDF" ] && [ "$SECTION" -nt "$PDF" ]; then
-    REUSE_HIT="$SECTION"; REUSE_FOLDER="$ABS"
-    [ -f "$CAND/.fin-cache/$SHA8/${TOKEN}.json" ] && REUSE_JSON="$CAND/.fin-cache/$SHA8/${TOKEN}.json"
+  # 候选优先级：① 新扁平固定路径 .fin-cache/<TOKEN>_section.md
+  #            ② 向后兼容旧嵌套 .fin-cache/<sha8>/<TOKEN>_section.md
+  # 旧嵌套用 find 枚举（**不用 glob**：zsh 下未匹配 glob 会直接 `no matches found`
+  # 报错；find 跨 shell 稳）。不重算 sha8 —— 移动文件夹后绝对路径变也仍命中。
+  # find 只枚举 sha8 目录层，token 文件名仍由 -name 精确匹配，非模糊。
+  CANDS="$CAND/.fin-cache/${TOKEN}_section.md"
+  LEG="$(find "$CAND/.fin-cache" -mindepth 2 -maxdepth 2 -type f -name "${TOKEN}_section.md" 2>/dev/null | sort)"
+  [ -n "$LEG" ] && CANDS="$CANDS
+$LEG"
+  FOUND=""
+  while IFS= read -r SECTION; do
+    [ -f "$SECTION" ] || continue
+    # 鲜度：留底 mtime 须晚于本期合并报表；PDF 缺失/不可读 → 无法判定 → 按陈旧处理
+    [ -n "$PDF" ] && [ -f "$PDF" ] && [ "$SECTION" -nt "$PDF" ] || continue
+    FOUND="$SECTION"; break
+  done <<EOF
+$CANDS
+EOF
+  if [ -n "$FOUND" ]; then
+    REUSE_HIT="$FOUND"; REUSE_FOLDER="$ABS"
+    # JSON 侧文件与 _section.md 同目录、同 token
+    JSON_CAND="${FOUND%_section.md}.json"
+    [ -f "$JSON_CAND" ] && REUSE_JSON="$JSON_CAND"
     break
   fi
 done
