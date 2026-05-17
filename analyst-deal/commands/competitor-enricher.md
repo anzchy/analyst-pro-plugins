@@ -81,13 +81,30 @@ allowed-tools: Read, Write, AskUserQuestion, Bash, Bash(jina:*), Glob, Agent
 
 - 先按 `--out` 切分：左侧是公司名串、右侧是输出目录
 - 公司名串按 `,`、`，`、空白拆分；trim 每项；去空
-- 如解析后**公司数 = 0**，触发 D0a：
+- 如解析后**公司数 = 0**，触发 D0a。
+
+**D0a 必须是一次合法的 AskUserQuestion 调用**：该工具要求 `questions` 非空、每题
+带 2–4 个 `options`；**不能**当成裸文本框（空 `questions`/`options` 会
+hard-fail "Invalid tool parameters"）。自由文本只能经工具自动提供的 **Other**
+输入。按下表构造调用：
 
 ```
-D0a — 缺少公司名
-请输入要调研的竞品公司名（用逗号或空格分隔）：
+AskUserQuestion:
+  question: "未解析到任何竞品公司名。选「输入公司名」并在随后出现的 Other 文本框
+             填入要调研的公司（用逗号或空格分隔，如：至成微, 朗力半导体, 速通智联）；
+             或选「取消」。"
+  header: "竞品公司名"
+  multiSelect: false
+  options:
+    - label: "输入公司名"
+      description: "选此项后用 Other 文本框填写公司名串；按 0.1 规则（逗号/空格分隔）拆分"
+    - label: "取消本次调研"
+      description: "不调研任何公司，结束命令（无副作用）"
 ```
-（用 AskUserQuestion 文本输入收集；空字符串 → 中止并提示用法）
+
+- 用户经 Other 填入非空串 → 回到 0.1 的拆分规则解析；若仍解析出 0 家 → 再次 D0a。
+- 选「取消本次调研」，或 Other 提交空串 → 中止并打印用法示例
+  （`/competitor-enricher <公司1>[, <公司2> ...] [--type ...] [--out <目录>]`）。
 
 ### 0.2 解析输出目录
 
@@ -114,11 +131,18 @@ B) 跳过，纯客观调研模式
 Net: A 是有方向的对比调研；B 是中性画像。
 ```
 
-如选 **A**，依次 AskUserQuestion 文本输入收集：
+如选 **A**，收集以下字段——**同 D0a：每个字段必须是合法 AskUserQuestion**
+（`questions` 非空、每题 2–4 个 `options`，自由文本经自动 **Other** 输入；
+裸文本框会 hard-fail）。可用一次 AskUserQuestion 一并提出（该工具单次支持至多
+4 个 `question`），每题统一给两个 `options`：「填写」（→ Other 输入实际值）与
+「跳过/无」（仅可选字段允许；必填字段选「跳过」则重问）：
 - 本公司名（必填）
 - 所属行业（必填，e.g., "Wi-Fi 6/7 AP 芯片"）
 - 主产品（必填，e.g., "WiFi AP 芯片"）
-- 本公司差异点提示（可选，e.g., "本公司从 AP 切入"）
+- 本公司差异点提示（可选，e.g., "本公司从 AP 切入"；可选「跳过/无」）
+
+> 必填字段经 Other 提交空串 → 就该字段重问一次；二次仍空 → 视为放弃 A，
+> 回退到 B（纯客观调研模式），不中止命令。
 
 如选 **B**，把 `项目背景` 设为：
 
