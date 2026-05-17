@@ -10,7 +10,7 @@ allowed-tools: Read, Write, AskUserQuestion, Bash, Bash(jina:*), Glob, Agent
 
 # Competitor Enricher（独立竞对调研）
 
-为 `$ARGUMENTS` 列出的每家公司各发起一次 `competitor-enricher` 子 agent 调研，把每家返回的档案块以独立 markdown 文件落盘到用户指定目录（默认当前工作目录根）。
+为 `$ARGUMENTS` 列出的每家公司各发起一次 `competitor-enricher` 子 agent 调研，把每家返回的档案块以独立 markdown 文件落盘到输出目录（默认 `./competitors/`，可用 `--out <dir>` 覆盖；见 Step 0.2）。
 
 > 这是 `/analyst-deal:portfolio-tracking` 的一个轻量入口：当分析师**只**需要竞对画像、不需要财务三表 / 经营情况 / 小结时使用。底层调用与主报告完全一致的 `agents/competitor-enricher.md`，输出格式严格符合 `knowledge/competitor_card_schema.md`。
 

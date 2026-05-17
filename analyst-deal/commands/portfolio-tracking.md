@@ -328,7 +328,7 @@ Net: A 是常态；B 用于材料还没入档的首次跑或临时跑。
 
 如选 **B**：依次通过 AskUserQuestion 文本输入收集 5 类路径（合并报表为必填，其余可选）。允许输入：
 - 单个文件绝对/相对路径
-- 目录（命令将 glob 该目录下所有 `*.md` / `*.pdf`）
+- 目录（命令将用 `find "<dir>" -maxdepth 1 -type f \( -name '*.md' -o -name '*.pdf' \) 2>/dev/null` 枚举该目录下文件——**不用 glob**：zsh 下未匹配 glob 会 `no matches found` 报错且 `2>/dev/null` 抑制不掉）
 - 空字符串（表示该类无材料，按缺失处理）
 
 合并报表至少 1 期；如 B 路径下也读不到任何合并报表，abort。
@@ -420,10 +420,12 @@ Write 完成后向用户简短打印一行："已建立报告骨架：`$REPORT_P
 financial-analyzer 子 agent。
 
 **向后兼容**：reader 同时接受新扁平路径与旧 `.fin-cache/<sha8>/<YYYYMMDD>.*`
-嵌套留底（旧缓存不孤立）。旧嵌套层用 glob `*/` 通配——**不重算 sha8**，正是为
-消除「移动文件夹后绝对路径变→sha8 变→静默 miss 重读 PDF」的脆弱点。注意 `*/`
-只通配已废弃的 sha8 目录层，**token 文件名仍须精确** `<YYYYMMDD>_section.md`，
-不是放宽成模糊匹配。
+嵌套留底（旧缓存不孤立）。旧嵌套层用 `find -mindepth 2 -maxdepth 2` 枚举
+（**不用 glob `*/`**：zsh 下未匹配 glob 会 `no matches found` 直接报错且
+`2>/dev/null` 抑制不掉；`find` 跨 shell 稳）——**不重算 sha8**，正是为消除
+「移动文件夹后绝对路径变→sha8 变→静默 miss 重读 PDF」的脆弱点。注意 `find`
+只枚举已废弃的 sha8 目录层，**token 文件名仍由 `-name` 精确匹配**
+`<YYYYMMDD>_section.md`，不是放宽成模糊匹配。
 
 **先静默预扫，命中才弹恰一个批级 AskUserQuestion；miss / 陈旧一律静默回退
 Step 5.2，不报错、不弹任何问题**（严格匹配是「文件名日期 ≠ 报告期」bug 类的
